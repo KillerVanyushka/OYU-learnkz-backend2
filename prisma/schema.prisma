@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum Level {
+  A0
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  level     Level @default(A0)
+  xp        Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  progress  Progress[]
+  attempts  TaskAttempt[]
+  
+}
+
+enum TaskType {
+  SENTENCE_BUILD
+}
+
+enum Lang {
+  KZ
+  RU
+  EN
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Lesson {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  orderIndex  Int      @default(0)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  level       Level    @default(A0)
+
+  tasks       Task[]
+  progress    Progress[]
+}
+
+model Task {
+  id           Int      @id @default(autoincrement())
+  lessonId     Int
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  type         TaskType @default(SENTENCE_BUILD)
+
+  promptLang   Lang
+  targetLang   Lang
+
+  promptText   String   
+  
+  optionsWords  Json
+  correctWords Json
+
+  xpReward     Int      @default(10)
+
+  orderIndex   Int      @default(0)
+  isArchived   Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  attempts     TaskAttempt[]
+}
+
+model Progress {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  lessonId  Int
+  status    ProgressStatus @default(NOT_STARTED)
+  score     Int            @default(0) // можно хранить очки за урок
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model TaskAttempt {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  taskId     Int
+
+  answerWords Json
+  isCorrect   Boolean
+  earnedXp    Int      @default(0)
+
+  createdAt  DateTime @default(now())
+
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId])
+}
