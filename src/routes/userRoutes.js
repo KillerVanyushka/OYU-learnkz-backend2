@@ -27,4 +27,16 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/users/me/streak
+router.get('/me/streak', requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { streakCount: true, streakLastDay: true },
+  })
+  res.json({
+    streak: user?.streakCount ?? 0,
+    lastDay: user?.streakLastDay ?? null,
+  })
+})
+
 module.exports = router

@@ -11,6 +11,8 @@ const taskRoutes = require('./routes/taskRoutes')
 const leaderboardRoutes = require('./routes/leaderBoardRoutes')
 const adminLessonRoutes = require('./routes/adminLessonRoutes')
 
+const progressRoutes = require('./routes/progressRoutes')
+
 const app = express()
 
 app.use(cors())
@@ -30,8 +32,9 @@ app.use('/api/tasks', taskRoutes)
 app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/admin', adminLessonRoutes)
 
+app.use('/api/progress', progressRoutes)
+
 const PORT = process.env.PORT
-console.log('DB:', process.env.DATABASE_URL?.replace(/:\/\/.*@/, '://****@'))
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)

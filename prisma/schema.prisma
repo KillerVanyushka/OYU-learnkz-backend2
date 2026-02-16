@@ -36,6 +36,8 @@ model User {
   role      Role     @default(USER)
   level     Level @default(A0)
   xp        Int      @default(0)
+  streakCount   Int     @default(0)
+  streakLastDay String?
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 
