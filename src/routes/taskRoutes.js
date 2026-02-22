@@ -4,6 +4,10 @@ const requireAuth = require('../middlewares/requireAuth')
 
 const LEVEL_ORDER = { A0: 0, A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 }
 
+function normalize(str) {
+  return String(str).trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
 function isSameStringArray(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b)) return false
   if (a.length !== b.length) return false
@@ -26,20 +30,18 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
     if (Number.isNaN(taskId))
       return res.status(400).json({ message: 'Invalid task id' })
 
-    const { answerWords } = req.body || {}
-    if (!Array.isArray(answerWords) || answerWords.length === 0) {
-      return res
-        .status(400)
-        .json({ message: 'answerWords must be a non-empty array' })
-    }
+    const { answerWords, answerText } = req.body || {}
 
     const task = await prisma.task.findFirst({
       where: { id: taskId, isArchived: false, lesson: { isArchived: false } },
       select: {
         id: true,
         lessonId: true,
+        type: true,
         correctWords: true,
         xpReward: true,
+        audioText: true,
+        translateText: true,
         lesson: { select: { level: true } },
       },
     })
@@ -50,6 +52,11 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
       where: { id: req.userId },
       select: { level: true },
     })
+    if (!user) return res.status(404).json({ message: 'User not found' })
+
+    if (!task.lesson?.level) {
+      return res.status(500).json({ message: 'Task has no lesson level' })
+    }
     const userRank = LEVEL_ORDER[user?.level ?? 'A0']
 
     if (LEVEL_ORDER[task.lesson.level] > userRank) {
@@ -58,7 +65,39 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
         .json({ message: 'Lesson is locked for your level' })
     }
 
-    const isCorrect = isSameStringArray(answerWords, task.correctWords)
+    let isCorrect = false
+
+    if (task.type === 'SENTENCE_BUILD') {
+      if (!Array.isArray(answerWords) || answerWords.length === 0) {
+        return res
+          .status(400)
+          .json({ message: 'answerWords must be a non-empty array' })
+      }
+      if (!Array.isArray(task.correctWords) || task.correctWords.length === 0) {
+        return res.status(500).json({ message: 'Task has no correctWords' })
+      }
+      isCorrect = isSameStringArray(answerWords, task.correctWords)
+    }
+
+    if (task.type === 'AUDIO_DICTATION') {
+      if (!answerText || String(answerText).trim().length === 0) {
+        return res.status(400).json({ message: 'answerText required' })
+      }
+      if (!task.audioText) {
+        return res.status(500).json({ message: 'Task has no audioText' })
+      }
+      isCorrect = normalize(answerText) === normalize(task.audioText)
+    }
+
+    if (task.type === 'AUDIO_TRANSLATE') {
+      if (!answerText || String(answerText).trim().length === 0) {
+        return res.status(400).json({ message: 'answerText required' })
+      }
+      if (!task.translateText) {
+        return res.status(500).json({ message: 'Task has no translateText' })
+      }
+      isCorrect = normalize(answerText) === normalize(task.translateText)
+    }
 
     // ✅ создаём/обновляем прогресс урока (если нет — создастся)
     await prisma.progress.upsert({
@@ -73,6 +112,9 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
       },
       update: {},
     })
+
+    const attemptAnswer =
+      task.type === 'SENTENCE_BUILD' ? answerWords : answerText
 
     const existingAttempt = await prisma.taskAttempt.findUnique({
       where: { userId_taskId: { userId: req.userId, taskId: task.id } },
@@ -92,7 +134,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
         data: {
           userId: req.userId,
           taskId: task.id,
-          answerWords,
+          answerWords: attemptAnswer,
           isCorrect,
           earnedXp: isCorrect ? task.xpReward : 0,
         },
@@ -102,7 +144,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
       attempt = await prisma.taskAttempt.update({
         where: { id: existingAttempt.id },
         data: {
-          answerWords,
+          answerWords: attemptAnswer,
           isCorrect,
           earnedXp: isCorrect ? task.xpReward : 0,
         },

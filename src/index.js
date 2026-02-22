@@ -10,8 +10,12 @@ const lessonRoutes = require('./routes/lessonRoutes')
 const taskRoutes = require('./routes/taskRoutes')
 const leaderboardRoutes = require('./routes/leaderBoardRoutes')
 const adminLessonRoutes = require('./routes/adminLessonRoutes')
+const uploadRoutes = require('./routes/uploadRoutes')
 
 const progressRoutes = require('./routes/progressRoutes')
+
+const taskPublicRoutes = require('./routes/taskPublicRoutes')
+const taskAudioRoutes = require('./routes/taskAudioRoutes')
 
 const app = express()
 
@@ -31,8 +35,12 @@ app.use('/api/lessons', lessonRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/admin', adminLessonRoutes)
+app.use('/api/admin', uploadRoutes)
 
 app.use('/api/progress', progressRoutes)
+
+app.use('/api/tasks', taskPublicRoutes)
+app.use('/api/tasks', taskAudioRoutes)
 
 const PORT = process.env.PORT
 

@@ -48,6 +48,8 @@ model User {
 
 enum TaskType {
   SENTENCE_BUILD
+  AUDIO_DICTATION
+  AUDIO_TRANSLATE
 }
 
 enum Lang {
@@ -86,10 +88,14 @@ model Task {
   promptLang   Lang
   targetLang   Lang
 
-  promptText   String   
+  promptText   String?  
   
-  optionsWords  Json
-  correctWords Json
+  audioUrl     String?
+  audioText    String?   
+  translateText String?
+
+  optionsWords Json?
+  correctWords Json?
 
   xpReward     Int      @default(10)
 
@@ -133,3 +139,5 @@ model TaskAttempt {
 
   @@unique([userId, taskId])
 }
+
+

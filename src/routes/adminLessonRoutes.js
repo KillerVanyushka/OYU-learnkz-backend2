@@ -89,6 +89,7 @@ router.post('/lessons/:id/tasks', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid lesson id' })
 
     const {
+      type,
       promptLang,
       targetLang,
       promptText,
@@ -96,38 +97,91 @@ router.post('/lessons/:id/tasks', ...staff, async (req, res) => {
       correctWords,
       xpReward,
       orderIndex,
-    } = req.body
+      audioUrl,
+      audioText,
+      translateText,
+    } = req.body || {}
 
-    if (!promptLang || !targetLang || !promptText) {
+    const taskType = type ?? 'SENTENCE_BUILD'
+
+    // базовые проверки
+    if (!promptLang || !targetLang) {
       return res
         .status(400)
-        .json({ message: 'promptLang, targetLang, promptText required' })
+        .json({ message: 'promptLang and targetLang required' })
     }
-    if (!Array.isArray(optionsWords) || !Array.isArray(correctWords)) {
-      return res
-        .status(400)
-        .json({ message: 'optionsWords and correctWords must be arrays' })
+
+    // валидация по типу
+    if (taskType === 'SENTENCE_BUILD') {
+      if (!promptText) {
+        return res
+          .status(400)
+          .json({ message: 'promptText required for SENTENCE_BUILD' })
+      }
+      if (!Array.isArray(optionsWords) || !Array.isArray(correctWords)) {
+        return res
+          .status(400)
+          .json({ message: 'optionsWords and correctWords must be arrays' })
+      }
+      if (correctWords.length === 0) {
+        return res
+          .status(400)
+          .json({ message: 'correctWords must be non-empty' })
+      }
+    }
+
+    if (taskType === 'AUDIO_DICTATION') {
+      if (!audioUrl)
+        return res
+          .status(400)
+          .json({ message: 'audioUrl required for AUDIO_DICTATION' })
+      if (!audioText)
+        return res
+          .status(400)
+          .json({ message: 'audioText required for AUDIO_DICTATION' })
+    }
+
+    if (taskType === 'AUDIO_TRANSLATE') {
+      if (!audioUrl)
+        return res
+          .status(400)
+          .json({ message: 'audioUrl required for AUDIO_TRANSLATE' })
+      if (!translateText) {
+        return res
+          .status(400)
+          .json({ message: 'translateText required for AUDIO_TRANSLATE' })
+      }
+      // audioText можно не требовать, но можно хранить если есть
     }
 
     const task = await prisma.task.create({
       data: {
         lessonId,
-        type: 'SENTENCE_BUILD',
+        type: taskType,
+
         promptLang,
         targetLang,
-        promptText,
-        optionsWords,
-        correctWords,
+
+        // для SENTENCE_BUILD
+        promptText: taskType === 'SENTENCE_BUILD' ? promptText : null,
+        optionsWords: taskType === 'SENTENCE_BUILD' ? optionsWords : undefined,
+        correctWords: taskType === 'SENTENCE_BUILD' ? correctWords : undefined,
+
+        // для AUDIO
+        audioUrl: taskType !== 'SENTENCE_BUILD' ? audioUrl : null,
+        audioText:
+          taskType === 'AUDIO_DICTATION' ? audioText : (audioText ?? null),
+        translateText: taskType === 'AUDIO_TRANSLATE' ? translateText : null,
+
         xpReward: Number.isFinite(xpReward) ? xpReward : 10,
         orderIndex: Number.isFinite(orderIndex) ? orderIndex : 0,
       },
     })
 
-    res.status(201).json(task)
+    return res.status(201).json(task)
   } catch (err) {
     console.error(err)
-    // Prisma может ругаться на enum значения
-    res.status(500).json({ message: 'Server error' })
+    return res.status(500).json({ message: 'Server error' })
   }
 })
 
