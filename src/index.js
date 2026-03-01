@@ -13,6 +13,7 @@ const adminLessonRoutes = require('./routes/adminLessonRoutes')
 const uploadRoutes = require('./routes/uploadRoutes')
 
 const progressRoutes = require('./routes/progressRoutes')
+const chatRoutes = require('./routes/chatRoutes');
 
 const taskPublicRoutes = require('./routes/taskPublicRoutes')
 const taskAudioRoutes = require('./routes/taskAudioRoutes')
@@ -38,6 +39,7 @@ app.use('/api/admin', adminLessonRoutes)
 app.use('/api/admin', uploadRoutes)
 
 app.use('/api/progress', progressRoutes)
+app.use('/api/chat', chatRoutes);
 
 app.use('/api/tasks', taskPublicRoutes)
 app.use('/api/tasks', taskAudioRoutes)

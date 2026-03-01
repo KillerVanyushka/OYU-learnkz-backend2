@@ -146,4 +146,18 @@ model TaskAttempt {
   @@unique([userId, taskId])
 }
 
+enum ChatRole {
+  USER
+  AI
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String   @db.VarChar(2000)
+  role      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
 
