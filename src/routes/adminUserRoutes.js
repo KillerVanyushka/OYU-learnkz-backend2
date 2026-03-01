@@ -64,53 +64,55 @@ router.get(
 )
 
 // ✅ Только Admin: менять роль
-router.patch(
-  '/users/:id/role',
-  requireAuth,
-  requireRole('ADMIN'),
-  async (req, res) => {
-    try {
-      const id = Number(req.params.id)
-      const { role } = req.body
+router.put(
+    '/users/:id/role',
+    requireAuth,
+    requireRole('ADMIN'),
+    async (req, res) => {
+      try {
+        const id = Number(req.params.id)
+        const { role } = req.body
 
-      if (Number.isNaN(id))
-        return res.status(400).json({ message: 'Invalid id' })
+        if (Number.isNaN(id))
+          return res.status(400).json({ message: 'Invalid id' })
 
-      const allowed = ['USER', 'MODERATOR', 'ADMIN']
-      if (!allowed.includes(role)) {
-        return res.status(400).json({ message: 'Invalid role' })
+        const allowed = ['USER', 'MODERATOR', 'ADMIN']
+        if (!allowed.includes(role)) {
+          return res.status(400).json({ message: 'Invalid role' })
+        }
+
+        // (опционально) запретить самому себе снять ADMIN
+        if (req.userId === id && role !== 'ADMIN') {
+          return res
+              .status(400)
+              .json({ message: "You can't change your own admin role" })
+        }
+
+        const updated = await prisma.user.update({
+          where: { id },
+          data: { role },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            level: true,
+            xp: true,
+            createdAt: true,
+          },
+        })
+
+        res.json(updated)
+      } catch (err) {
+        console.error(err)
+
+        // если id не найден
+        if (err.code === 'P2025')
+          return res.status(404).json({ message: 'User not found' })
+
+        res.status(500).json({ message: 'Server error' })
       }
-
-      // (опционально) запретить самому себе снять ADMIN
-      if (req.userId === id && role !== 'ADMIN') {
-        return res
-          .status(400)
-          .json({ message: "You can't change your own admin role" })
-      }
-
-      const updated = await prisma.user.update({
-        where: { id },
-        data: { role },
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-          level: true,
-          xp: true,
-          createdAt: true,
-        },
-      })
-
-      res.json(updated)
-    } catch (err) {
-      console.error(err)
-      // если id не найден
-      if (err.code === 'P2025')
-        return res.status(404).json({ message: 'User not found' })
-      res.status(500).json({ message: 'Server error' })
-    }
-  },
+    },
 )
 
 module.exports = router
