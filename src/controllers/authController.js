@@ -46,7 +46,7 @@ exports.register = async (req, res) => {
       },
     })
 
-    // Отправка кода на email
+    // Отправка кода на email через Mailjet
     const html = `
       <p>Вы зарегистрировались в OYU LearnKZ.</p>
       <p>Введите этот код в приложении для подтверждения email:</p>
@@ -70,7 +70,7 @@ exports.register = async (req, res) => {
 exports.confirmEmail = async (req, res) => {
   try {
     const { token } = req.body
-    if (!token) return res.status(400).json({ message: 'Токен обязателен' })
+    if (!token) return res.status(400).json({ message: 'Код обязателен' })
 
     const user = await prisma.user.findFirst({
       where: { emailConfirmationToken: token },

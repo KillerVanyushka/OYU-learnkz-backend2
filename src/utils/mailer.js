@@ -1,24 +1,29 @@
-const nodemailer = require('nodemailer')
-
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
-    secure: false, // 587 = TLS, 465 = SSL
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-    family: 4 // принудительно использовать IPv4
-})
+const Mailjet = require('node-mailjet')
+const mailjet = Mailjet.apiConnect(
+    process.env.MAILJET_API_KEY,
+    process.env.MAILJET_SECRET_KEY
+)
 
 async function sendMail(to, subject, html) {
-    const info = await transporter.sendMail({
-        from: `"OYU LearnKZ" <${process.env.SMTP_USER}>`,
-        to,
-        subject,
-        html,
-    })
-    console.log('Email sent: %s', info.messageId)
+    try {
+        const request = await mailjet.post('send', { version: 'v3.1' }).request({
+            Messages: [
+                {
+                    From: {
+                        Email: process.env.MAILJET_FROM_EMAIL,
+                        Name: process.env.MAILJET_FROM_NAME,
+                    },
+                    To: [{ Email: to }],
+                    Subject: subject,
+                    HTMLPart: html,
+                },
+            ],
+        })
+
+        console.log('Email sent:', request.body.Messages[0].Status)
+    } catch (err) {
+        console.error('Mailjet error:', err.statusCode, err.message)
+    }
 }
 
 module.exports = sendMail
