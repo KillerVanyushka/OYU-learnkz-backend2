@@ -42,4 +42,24 @@ router.get('/me/streak', requireAuth, async (req, res) => {
   })
 })
 
+
+// DELETE /api/users/me
+router.delete('/me', requireAuth, async (req, res) => {
+  try {
+    // Удаляем пользователя по его id
+    const deletedUser = await prisma.user.delete({
+      where: { id: req.userId },
+    })
+
+    res.json({ message: 'User deleted successfully', userId: deletedUser.id })
+  } catch (err) {
+    console.error(err)
+    if (err.code === 'P2025') {
+      // P2025 – код Prisma, если запись не найдена
+      return res.status(404).json({ message: 'User not found' })
+    }
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router

@@ -41,6 +41,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
 
+  emailConfirmed         Boolean @default(false)
+  emailConfirmationToken String?
+
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+
   progress  Progress[]
   attempts  TaskAttempt[]
   
