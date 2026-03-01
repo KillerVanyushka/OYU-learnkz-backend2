@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const prisma = require('../utils/prisma');
@@ -10,44 +11,38 @@ router.post('/chat', async (req, res) => {
 
         // Сохраняем сообщение пользователя
         await prisma.chatMessage.create({
-            data: {
-                userId,
-                message,
-                role: 'user',
-            },
+            data: { userId, message, role: 'user' },
         });
 
-        // Отправляем запрос в Gemini API
+        // Qwen API запрос
         const response = await axios.post(
-            'https://gemini.googleapis.com/v1beta2/models/text-bison-001:generateText',
+            'https://openrouter.ai/api/v1/chat/completions',
             {
-                prompt: message,
-                temperature: 0.7,
-                maxOutputTokens: 500
+                model: 'qwen/qwen3.5-plus-02-15',
+                messages: [
+                    { role: 'user', content: message }
+                ],
+                reasoning: { enabled: true } // включаем reasoning, если нужно
             },
             {
                 headers: {
-                    'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`,
+                    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
                     'Content-Type': 'application/json'
                 }
             }
         );
 
-        const aiMessage = response.data.candidates?.[0]?.content || 'Ошибка генерации ответа';
+        const aiMessage = response.data.choices?.[0]?.message?.content || 'Ошибка генерации ответа';
 
         // Сохраняем ответ AI
         await prisma.chatMessage.create({
-            data: {
-                userId,
-                message: aiMessage,
-                role: 'ai',
-            },
+            data: { userId, message: aiMessage, role: 'ai' },
         });
 
         res.json({ aiMessage });
 
     } catch (err) {
-        console.error(err);
+        console.error(err.response?.data || err.message);
         res.status(500).json({ message: 'Server error' });
     }
 });
