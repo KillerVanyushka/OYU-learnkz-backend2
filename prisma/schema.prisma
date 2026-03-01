@@ -49,6 +49,7 @@ model User {
 
   progress  Progress[]
   attempts  TaskAttempt[]
+  chatMessages ChatMessage[]
   
 }
 
