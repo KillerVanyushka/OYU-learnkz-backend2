@@ -154,3 +154,37 @@ enum ChatRole {
   USER
   AI
 }
+
+model AlphabetLetter {
+  id              Int      @id @default(autoincrement())
+
+  orderIndex      Int      @default(0)
+
+  // Буква
+  uppercase       String   // "Ә"
+  lowercase       String   // "ә"
+
+  // Как произносится
+  pronunciationRu String?
+  pronunciationEn String?
+
+  // Описание / объяснение
+  descriptionRu   String?
+  descriptionEn   String?
+
+  // Примеры слов (лучше хранить как JSON)
+  examples        Json?
+  // пример:
+  // [
+  //   { "kz": "әке", "ru": "отец", "en": "father" }
+  // ]
+
+  // Аудио произношения
+  audioUrl        String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([uppercase, lowercase])
+  @@index([orderIndex])
+}

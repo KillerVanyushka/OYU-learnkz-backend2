@@ -18,6 +18,9 @@ const chatRoutes = require('./routes/chatRoutes');
 const taskPublicRoutes = require('./routes/taskPublicRoutes')
 const taskAudioRoutes = require('./routes/taskAudioRoutes')
 
+const alphabetRoutes = require('./routes/alphabetRoutes')
+const adminAlphabetRoutes = require('./routes/adminAlphabetRoutes')
+
 const app = express()
 
 app.use(cors())
@@ -43,6 +46,9 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/tasks', taskRoutes)
 app.use('/api/tasks', taskPublicRoutes)
 app.use('/api/tasks', taskAudioRoutes)
+
+app.use('/api/alphabet', alphabetRoutes)
+app.use('/api/admin/alphabet', adminAlphabetRoutes)
 
 const PORT = process.env.PORT || 5000
 
