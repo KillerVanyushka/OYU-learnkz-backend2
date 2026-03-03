@@ -2,7 +2,7 @@ const express = require('express')
 const prisma = require('../utils/prisma')
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
-const prisma = require('../utils/r2') // твой S3Client
+const r2 = require('../utils/r2')
 
 const router = express.Router()
 
