@@ -4,6 +4,20 @@ const jwt = require('jsonwebtoken')
 const prisma = require('../utils/prisma')
 const sendMail = require('../utils/mailer')
 
+async function generateUniqueNickname() {
+  for (let i = 0; i < 10; i++) {
+    const nickname = `user${Math.floor(100000000 + Math.random() * 900000000)}` // user + 9 цифр
+
+    const exists = await prisma.user.findUnique({
+      where: { nickname },
+      select: { id: true },
+    })
+
+    if (!exists) return nickname
+  }
+  throw new Error('Failed to generate unique nickname')
+}
+
 // =======================
 // Регистрация с email
 // =======================
@@ -24,11 +38,14 @@ exports.register = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10)
-    const emailToken = crypto.randomBytes(6).toString('hex') // код для Flutter
+    const emailToken = crypto.randomBytes(6).toString('hex')
+
+    const nickname = await generateUniqueNickname() // ✅ генерим ник
 
     const user = await prisma.user.create({
       data: {
         username,
+        nickname, // ✅ сохраняем
         email,
         password: hash,
         role: 'USER',
@@ -38,6 +55,7 @@ exports.register = async (req, res) => {
       select: {
         id: true,
         username: true,
+        nickname: true, // ✅ возвращаем
         email: true,
         role: true,
         level: true,
@@ -46,7 +64,6 @@ exports.register = async (req, res) => {
       },
     })
 
-    // Отправка кода на email через Mailjet
     const html = `
       <p>Вы зарегистрировались в OYU LearnKZ.</p>
       <p>Введите этот код в приложении для подтверждения email:</p>
@@ -60,6 +77,12 @@ exports.register = async (req, res) => {
     })
   } catch (err) {
     console.error(err)
+
+    // если вдруг коллизия по уникальности nickname (очень редко) — можно вернуть понятную ошибку
+    if (err.code === 'P2002') {
+      return res.status(409).json({ message: 'Nickname conflict, try again' })
+    }
+
     return res.status(500).json({ message: err })
   }
 }
@@ -121,6 +144,7 @@ exports.login = async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
+        nickname: user.nickname,
         email: user.email,
         role: user.role,
         level: user.level,

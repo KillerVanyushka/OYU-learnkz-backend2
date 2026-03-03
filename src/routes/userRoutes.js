@@ -42,11 +42,247 @@ router.get('/me/streak', requireAuth, async (req, res) => {
   })
 })
 
+// ------------------------------
+// FOLLOW CRUD
+// БАЗОВЫЕ ЭНДПОИНТЫ:
+//
+// POST   /api/users/:id/follow      -> подписаться на пользователя :id
+// DELETE /api/users/:id/follow      -> отписаться
+// GET    /api/users/:id/followers   -> подписчики пользователя :id
+// GET    /api/users/:id/following   -> на кого подписан пользователь :id
+// GET    /api/users/:id/follow/status -> подписан ли текущий на :id
+// GET    /api/users/:id/follow/counts -> количество followers/following у :id
+// ------------------------------
+
+// POST /api/users/:id/follow
+router.post('/:id/follow', requireAuth, async (req, res) => {
+  try {
+    const targetUserId = Number(req.params.id)
+    const currentUserId = req.userId
+
+    if (!Number.isInteger(targetUserId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    if (targetUserId === currentUserId) {
+      return res.status(400).json({ message: "You can't follow yourself" })
+    }
+
+    // проверим что цель существует
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true },
+    })
+    if (!target) return res.status(404).json({ message: 'Target user not found' })
+
+    const follow = await prisma.follow.create({
+      data: {
+        followerId: currentUserId,
+        followingId: targetUserId,
+      },
+      select: {
+        id: true,
+        followerId: true,
+        followingId: true,
+        createdAt: true,
+      },
+    })
+
+    return res.status(201).json({ message: 'Followed', follow })
+  } catch (err) {
+    console.error(err)
+    // P2002 = unique constraint failed (у нас @@unique([followerId, followingId]))
+    if (err.code === 'P2002') {
+      return res.status(409).json({ message: 'Already following' })
+    }
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// DELETE /api/users/:id/follow
+router.delete('/:id/follow', requireAuth, async (req, res) => {
+  try {
+    const targetUserId = Number(req.params.id)
+    const currentUserId = req.userId
+
+    if (!Number.isInteger(targetUserId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    if (targetUserId === currentUserId) {
+      return res.status(400).json({ message: "You can't unfollow yourself" })
+    }
+
+    await prisma.follow.delete({
+      where: {
+        followerId_followingId: {
+          followerId: currentUserId,
+          followingId: targetUserId,
+        },
+      },
+    })
+
+    return res.json({ message: 'Unfollowed' })
+  } catch (err) {
+    console.error(err)
+    // P2025 = record not found
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'Follow relation not found' })
+    }
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// GET /api/users/:id/follow/status
+router.get('/:id/follow/status', requireAuth, async (req, res) => {
+  try {
+    const targetUserId = Number(req.params.id)
+    const currentUserId = req.userId
+
+    if (!Number.isInteger(targetUserId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    if (targetUserId === currentUserId) {
+      return res.json({ isFollowing: false })
+    }
+
+    const follow = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: currentUserId,
+          followingId: targetUserId,
+        },
+      },
+      select: { id: true },
+    })
+
+    return res.json({ isFollowing: !!follow })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// GET /api/users/:id/follow/counts
+router.get('/:id/follow/counts', requireAuth, async (req, res) => {
+  try {
+    const userId = Number(req.params.id)
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    const [followersCount, followingCount] = await Promise.all([
+      prisma.follow.count({ where: { followingId: userId } }),
+      prisma.follow.count({ where: { followerId: userId } }),
+    ])
+
+    return res.json({ userId, followersCount, followingCount })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// GET /api/users/:id/followers?cursor=...&take=20
+router.get('/:id/followers', requireAuth, async (req, res) => {
+  try {
+    const userId = Number(req.params.id)
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    const take = Math.min(Number(req.query.take) || 20, 50)
+    const cursor = req.query.cursor ? Number(req.query.cursor) : null
+
+    const rows = await prisma.follow.findMany({
+      where: { followingId: userId },
+      orderBy: { id: 'desc' },
+      take: take + 1,
+      ...(cursor
+          ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+          : {}),
+      select: {
+        id: true,
+        createdAt: true,
+        follower: {
+          select: {
+            id: true,
+            username: true,
+            level: true,
+            xp: true,
+            createdAt: true,
+          },
+        },
+      },
+    })
+
+    const hasMore = rows.length > take
+    const items = hasMore ? rows.slice(0, take) : rows
+    const nextCursor = hasMore ? items[items.length - 1].id : null
+
+    return res.json({ items, nextCursor })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// GET /api/users/:id/following?cursor=...&take=20
+router.get('/:id/following', requireAuth, async (req, res) => {
+  try {
+    const userId = Number(req.params.id)
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    const take = Math.min(Number(req.query.take) || 20, 50)
+    const cursor = req.query.cursor ? Number(req.query.cursor) : null
+
+    const rows = await prisma.follow.findMany({
+      where: { followerId: userId },
+      orderBy: { id: 'desc' },
+      take: take + 1,
+      ...(cursor
+          ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+          : {}),
+      select: {
+        id: true,
+        createdAt: true,
+        following: {
+          select: {
+            id: true,
+            username: true,
+            level: true,
+            xp: true,
+            createdAt: true,
+          },
+        },
+      },
+    })
+
+    const hasMore = rows.length > take
+    const items = hasMore ? rows.slice(0, take) : rows
+    const nextCursor = hasMore ? items[items.length - 1].id : null
+
+    return res.json({ items, nextCursor })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// ------------------------------
 
 // DELETE /api/users/me
 router.delete('/me', requireAuth, async (req, res) => {
   try {
-    // Удаляем пользователя по его id
     const deletedUser = await prisma.user.delete({
       where: { id: req.userId },
     })
@@ -55,11 +291,115 @@ router.delete('/me', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err)
     if (err.code === 'P2025') {
-      // P2025 – код Prisma, если запись не найдена
       return res.status(404).json({ message: 'User not found' })
     }
     res.status(500).json({ message: 'Server error' })
   }
 })
+
+
+router.get('/by-nickname/:nickname', requireAuth, async (req, res) => {
+  try {
+    const { nickname } = req.params
+    const user = await prisma.user.findUnique({
+      where: { nickname },
+      select: { id: true, username: true, nickname: true, level: true, xp: true, createdAt: true },
+    })
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    res.json(user)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+
+// PATCH /api/users/me/nickname
+router.patch('/me/nickname', requireAuth, async (req, res) => {
+  try {
+    let { nickname } = req.body
+    if (!nickname) return res.status(400).json({ message: 'Nickname обязателен' })
+
+    // нормализация
+    nickname = String(nickname).trim().toLowerCase()
+
+    // простая валидация (можешь поменять правила)
+    if (nickname.length < 3 || nickname.length > 20) {
+      return res.status(400).json({ message: 'Nickname должен быть 3-20 символов' })
+    }
+    if (!/^[a-z0-9_]+$/.test(nickname)) {
+      return res.status(400).json({ message: 'Nickname может содержать только a-z, 0-9 и _' })
+    }
+
+    // запретить "user123..." если хочешь — убери/оставь
+    // if (nickname.startsWith('user')) ...
+
+    // если пользователь вводит свой текущий ник — просто вернем
+    const me = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, nickname: true },
+    })
+    if (!me) return res.status(404).json({ message: 'User not found' })
+    if (me.nickname === nickname) {
+      return res.json({ message: 'Nickname updated', nickname: me.nickname, autoGenerated: false })
+    }
+
+    // 1) пробуем поставить ник который ввел пользователь
+    try {
+      const updated = await prisma.user.update({
+        where: { id: req.userId },
+        data: { nickname },
+        select: { id: true, username: true, nickname: true },
+      })
+
+      return res.json({ message: 'Nickname updated', user: updated, autoGenerated: false })
+    } catch (e) {
+      // если ник занят — генерим новый
+      if (e.code !== 'P2002') throw e
+    }
+
+    // 2) ник занят -> генерим новый и сохраняем
+    let newNick = null
+    for (let i = 0; i < 10; i++) {
+      const candidate = `user${Math.floor(100000000 + Math.random() * 900000000)}`
+      try {
+        const updated = await prisma.user.update({
+          where: { id: req.userId },
+          data: { nickname: candidate },
+          select: { id: true, username: true, nickname: true },
+        })
+        newNick = updated.nickname
+        return res.status(409).json({
+          message: 'Nickname already taken. New nickname generated.',
+          user: updated,
+          autoGenerated: true,
+        })
+      } catch (e) {
+        if (e.code !== 'P2002') throw e
+      }
+    }
+
+    return res.status(500).json({ message: 'Не удалось подобрать свободный nickname' })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+
+// GET /api/users/nickname/check?nickname=abc
+router.get('/nickname/check', requireAuth, async (req, res) => {
+  let nickname = String(req.query.nickname || '').trim().toLowerCase()
+  if (!nickname) return res.status(400).json({ message: 'nickname обязателен' })
+
+  const exists = await prisma.user.findUnique({
+    where: { nickname },
+    select: { id: true },
+  })
+
+  res.json({ nickname, available: !exists })
+})
+
+
 
 module.exports = router

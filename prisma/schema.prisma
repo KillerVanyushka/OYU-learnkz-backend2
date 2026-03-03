@@ -22,7 +22,10 @@ model User {
   emailConfirmed         Boolean       @default(false)
   resetPasswordExpiry    DateTime?
   resetPasswordToken     String?
+  nickname               String        @unique
   chatMessages           ChatMessage[]
+  following              Follow[]      @relation("UserFollowing")
+  followers              Follow[]      @relation("UserFollowers")
   progress               Progress[]
   attempts               TaskAttempt[]
 }
@@ -98,6 +101,19 @@ model ChatMessage {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
 
 enum Role {
