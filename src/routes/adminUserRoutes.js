@@ -115,4 +115,39 @@ router.put(
     },
 )
 
+// ✅ Только Admin: удалить пользователя
+router.delete(
+    '/users/:id',
+    requireAuth,
+    requireRole('ADMIN'),
+    async (req, res) => {
+      try {
+        const id = Number(req.params.id)
+        if (Number.isNaN(id)) {
+          return res.status(400).json({ message: 'Invalid id' })
+        }
+
+        // (опционально) запретить админу удалить самого себя
+        if (req.userId === id) {
+          return res.status(400).json({ message: "You can't delete yourself" })
+        }
+
+        await prisma.user.delete({
+          where: { id },
+        })
+
+        return res.json({ message: 'User deleted' })
+      } catch (err) {
+        console.error(err)
+
+        // Prisma: запись не найдена
+        if (err.code === 'P2025') {
+          return res.status(404).json({ message: 'User not found' })
+        }
+
+        return res.status(500).json({ message: 'Server error' })
+      }
+    },
+)
+
 module.exports = router

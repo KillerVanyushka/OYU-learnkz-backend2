@@ -30,17 +30,17 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
-app.use('/api/admin', adminUserRoutes)
 
-app.use('/api/lessons', lessonRoutes)
-app.use('/api/tasks', taskRoutes)
-app.use('/api/leaderboard', leaderboardRoutes)
+app.use('/api/admin', adminUserRoutes)
 app.use('/api/admin', adminLessonRoutes)
 app.use('/api/admin', uploadRoutes)
 
+app.use('/api/lessons', lessonRoutes)
+app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/progress', progressRoutes)
 app.use('/api/chat', chatRoutes);
 
+app.use('/api/tasks', taskRoutes)
 app.use('/api/tasks', taskPublicRoutes)
 app.use('/api/tasks', taskAudioRoutes)
 
