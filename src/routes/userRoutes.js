@@ -30,7 +30,7 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/users/me/streak
+// GET /api/user/me/streak
 router.get('/me/streak', requireAuth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
@@ -46,15 +46,15 @@ router.get('/me/streak', requireAuth, async (req, res) => {
 // FOLLOW CRUD
 // БАЗОВЫЕ ЭНДПОИНТЫ:
 //
-// POST   /api/users/:id/follow      -> подписаться на пользователя :id
-// DELETE /api/users/:id/follow      -> отписаться
-// GET    /api/users/:id/followers   -> подписчики пользователя :id
-// GET    /api/users/:id/following   -> на кого подписан пользователь :id
-// GET    /api/users/:id/follow/status -> подписан ли текущий на :id
-// GET    /api/users/:id/follow/counts -> количество followers/following у :id
+// POST   /api/user/:id/follow      -> подписаться на пользователя :id
+// DELETE /api/user/:id/follow      -> отписаться
+// GET    /api/user/:id/followers   -> подписчики пользователя :id
+// GET    /api/user/:id/following   -> на кого подписан пользователь :id
+// GET    /api/user/:id/follow/status -> подписан ли текущий на :id
+// GET    /api/user/:id/follow/counts -> количество followers/following у :id
 // ------------------------------
 
-// POST /api/users/:id/follow
+// POST /api/user/:id/follow
 router.post('/:id/follow', requireAuth, async (req, res) => {
   try {
     const targetUserId = Number(req.params.id)
@@ -99,7 +99,7 @@ router.post('/:id/follow', requireAuth, async (req, res) => {
   }
 })
 
-// DELETE /api/users/:id/follow
+// DELETE /api/user/:id/follow
 router.delete('/:id/follow', requireAuth, async (req, res) => {
   try {
     const targetUserId = Number(req.params.id)
@@ -133,7 +133,7 @@ router.delete('/:id/follow', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/users/:id/follow/status
+// GET /api/user/:id/follow/status
 router.get('/:id/follow/status', requireAuth, async (req, res) => {
   try {
     const targetUserId = Number(req.params.id)
@@ -164,7 +164,7 @@ router.get('/:id/follow/status', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/users/:id/follow/counts
+// GET /api/user/:id/follow/counts
 router.get('/:id/follow/counts', requireAuth, async (req, res) => {
   try {
     const userId = Number(req.params.id)
@@ -184,7 +184,7 @@ router.get('/:id/follow/counts', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/users/:id/followers?cursor=...&take=20
+// GET /api/user/:id/followers?cursor=...&take=20
 router.get('/:id/followers', requireAuth, async (req, res) => {
   try {
     const userId = Number(req.params.id)
@@ -231,7 +231,7 @@ router.get('/:id/followers', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/users/:id/following?cursor=...&take=20
+// GET /api/user/:id/following?cursor=...&take=20
 router.get('/:id/following', requireAuth, async (req, res) => {
   try {
     const userId = Number(req.params.id)
@@ -280,7 +280,7 @@ router.get('/:id/following', requireAuth, async (req, res) => {
 
 // ------------------------------
 
-// DELETE /api/users/me
+// DELETE /api/user/me
 router.delete('/me', requireAuth, async (req, res) => {
   try {
     const deletedUser = await prisma.user.delete({
@@ -314,7 +314,7 @@ router.get('/by-nickname/:nickname', requireAuth, async (req, res) => {
 })
 
 
-// PATCH /api/users/me/nickname
+// PATCH /api/user/me/nickname
 router.patch('/me/nickname', requireAuth, async (req, res) => {
   try {
     let { nickname } = req.body
@@ -387,7 +387,7 @@ router.patch('/me/nickname', requireAuth, async (req, res) => {
 })
 
 
-// GET /api/users/nickname/check?nickname=abc
+// GET /api/user/nickname/check?nickname=abc
 router.get('/nickname/check', requireAuth, async (req, res) => {
   let nickname = String(req.query.nickname || '').trim().toLowerCase()
   if (!nickname) return res.status(400).json({ message: 'nickname обязателен' })
@@ -398,6 +398,54 @@ router.get('/nickname/check', requireAuth, async (req, res) => {
   })
 
   res.json({ nickname, available: !exists })
+})
+
+
+// PATCH /api/user/me/username
+router.patch('/me/username', requireAuth, async (req, res) => {
+  try {
+    let { username } = req.body
+    if (username === undefined || username === null) {
+      return res.status(400).json({ message: 'Username обязателен' })
+    }
+
+    // нормализация
+    username = String(username).trim()
+
+    // валидация (можешь поменять правила)
+    if (username.length < 2 || username.length > 50) {
+      return res.status(400).json({ message: 'Username должен быть 2-50 символов' })
+    }
+
+    // (опционально) запретить странные символы — оставь/убери как хочешь
+    // Разрешим буквы (лат/кир), цифры, пробел, _ и -
+    if (!/^[a-zA-Zа-яА-ЯёЁ0-9 _-]+$/.test(username)) {
+      return res.status(400).json({ message: 'Username содержит недопустимые символы' })
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: { username },
+      select: {
+        id: true,
+        username: true,
+        nickname: true,
+        email: true,
+        level: true,
+        role: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.json({ message: 'Username updated', user: updated })
+  } catch (err) {
+    console.error(err)
+    // P2025 = user not found
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    return res.status(500).json({ message: 'Server error' })
+  }
 })
 
 
