@@ -1,5 +1,5 @@
 const express = require('express')
-const prisma = require('../prisma')
+const prisma = require('../utils/prisma')
 
 const router = express.Router()
 
