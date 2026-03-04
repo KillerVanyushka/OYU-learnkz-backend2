@@ -88,9 +88,19 @@ router.patch(
           .json({ message: "You can't change your own admin role" })
       }
 
+      const updateData = { role }
+
+      if (role === 'MODERATOR' || role === 'ADMIN') {
+        updateData.level = 'C2'
+      }
+
+      if (role === 'USER') {
+        updateData.level = 'A0'
+      }
+
       const updated = await prisma.user.update({
         where: { id },
-        data: { role },
+        data: updateData,
         select: {
           id: true,
           username: true,

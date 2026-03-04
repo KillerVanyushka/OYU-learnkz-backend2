@@ -250,4 +250,50 @@ router.patch('/tasks/:id/archive', ...staff, async (req, res) => {
   }
 })
 
+// DELETE /api/admin/tasks/:id  (удалить задание полностью)
+router.delete('/tasks/:id', ...staff, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (Number.isNaN(id))
+      return res.status(400).json({ message: 'Invalid task id' })
+
+    await prisma.task.delete({ where: { id } })
+
+    return res.json({ message: 'Task deleted' })
+  } catch (err) {
+    console.error(err)
+    if (err.code === 'P2025')
+      return res.status(404).json({ message: 'Task not found' })
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// DELETE /api/admin/lessons/:id  (удалить урок полностью + задачи каскадом)
+router.delete('/lessons/:id', ...staff, async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (Number.isNaN(id))
+      return res.status(400).json({ message: 'Invalid lesson id' })
+
+    await prisma.lesson.delete({ where: { id } })
+
+    return res.json({ message: 'Lesson deleted' })
+  } catch (err) {
+    console.error(err)
+
+    // если каскад не настроен, может упасть с FK constraint
+    if (err.code === 'P2025')
+      return res.status(404).json({ message: 'Lesson not found' })
+
+    // Prisma может вернуть P2003 (foreign key constraint failed)
+    if (err.code === 'P2003')
+      return res.status(409).json({
+        message:
+          'Cannot delete lesson because it has related tasks. Enable cascade delete in Prisma schema.',
+      })
+
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router
