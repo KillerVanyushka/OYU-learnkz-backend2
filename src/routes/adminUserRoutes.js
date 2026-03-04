@@ -65,89 +65,91 @@ router.get(
 
 // ✅ Только Admin: менять роль
 router.put(
-    '/users/:id/role',
-    requireAuth,
-    requireRole('ADMIN'),
-    async (req, res) => {
-      try {
-        const id = Number(req.params.id)
-        const { role } = req.body
+  '/users/:id/role',
+  requireAuth,
+  requireRole('ADMIN'),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id)
+      const { role } = req.body
 
-        if (Number.isNaN(id))
-          return res.status(400).json({ message: 'Invalid id' })
+      if (Number.isNaN(id))
+        return res.status(400).json({ message: 'Invalid id' })
 
-        const allowed = ['USER', 'MODERATOR', 'ADMIN']
-        if (!allowed.includes(role)) {
-          return res.status(400).json({ message: 'Invalid role' })
-        }
-
-        // (опционально) запретить самому себе снять ADMIN
-        if (req.userId === id && role !== 'ADMIN') {
-          return res
-              .status(400)
-              .json({ message: "You can't change your own admin role" })
-        }
-
-        const updated = await prisma.user.update({
-          where: { id },
-          data: { role },
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            level: true,
-            xp: true,
-            createdAt: true,
-          },
-        })
-
-        res.json(updated)
-      } catch (err) {
-        console.error(err)
-
-        // если id не найден
-        if (err.code === 'P2025')
-          return res.status(404).json({ message: 'User not found' })
-
-        res.status(500).json({ message: 'Server error' })
+      const allowed = ['USER', 'MODERATOR', 'ADMIN']
+      if (!allowed.includes(role)) {
+        return res.status(400).json({ message: 'Invalid role' })
       }
-    },
+
+      // (опционально) запретить самому себе снять ADMIN
+      if (req.userId === id && role !== 'ADMIN') {
+        return res
+          .status(400)
+          .json({ message: "You can't change your own admin role" })
+      }
+
+      const levelMap = { USER: 'A0', MODERATOR: 'C2', ADMIN: 'C2' }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { role, level: levelMap[role] },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          level: true,
+          xp: true,
+          createdAt: true,
+        },
+      })
+
+      res.json(updated)
+    } catch (err) {
+      console.error(err)
+
+      // если id не найден
+      if (err.code === 'P2025')
+        return res.status(404).json({ message: 'User not found' })
+
+      res.status(500).json({ message: 'Server error' })
+    }
+  },
 )
 
 // ✅ Только Admin: удалить пользователя
 router.delete(
-    '/users/:id',
-    requireAuth,
-    requireRole('ADMIN'),
-    async (req, res) => {
-      try {
-        const id = Number(req.params.id)
-        if (Number.isNaN(id)) {
-          return res.status(400).json({ message: 'Invalid id' })
-        }
-
-        // (опционально) запретить админу удалить самого себя
-        if (req.userId === id) {
-          return res.status(400).json({ message: "You can't delete yourself" })
-        }
-
-        await prisma.user.delete({
-          where: { id },
-        })
-
-        return res.json({ message: 'User deleted' })
-      } catch (err) {
-        console.error(err)
-
-        // Prisma: запись не найдена
-        if (err.code === 'P2025') {
-          return res.status(404).json({ message: 'User not found' })
-        }
-
-        return res.status(500).json({ message: 'Server error' })
+  '/users/:id',
+  requireAuth,
+  requireRole('ADMIN'),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id)
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid id' })
       }
-    },
+
+      // (опционально) запретить админу удалить самого себя
+      if (req.userId === id) {
+        return res.status(400).json({ message: "You can't delete yourself" })
+      }
+
+      await prisma.user.delete({
+        where: { id },
+      })
+
+      return res.json({ message: 'User deleted' })
+    } catch (err) {
+      console.error(err)
+
+      // Prisma: запись не найдена
+      if (err.code === 'P2025') {
+        return res.status(404).json({ message: 'User not found' })
+      }
+
+      return res.status(500).json({ message: 'Server error' })
+    }
+  },
 )
 
 module.exports = router
