@@ -22,7 +22,7 @@ model User {
   emailConfirmed         Boolean       @default(false)
   resetPasswordExpiry    DateTime?
   resetPasswordToken     String?
-  nickname               String?        @unique
+  nickname               String?       @unique
   chatMessages           ChatMessage[]
   following              Follow[]      @relation("UserFollowing")
   followers              Follow[]      @relation("UserFollowers")
@@ -116,6 +116,35 @@ model Follow {
   @@index([followingId])
 }
 
+model AlphabetLetter {
+  id              Int      @id @default(autoincrement())
+  orderIndex      Int      @default(0)
+  uppercase       String
+  lowercase       String
+  pronunciationRu String?
+  pronunciationEn String?
+  descriptionRu   String?
+  descriptionEn   String?
+  examples        Json?
+  audioUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([uppercase, lowercase])
+  @@index([orderIndex])
+}
+
+model KazakhLetter {
+  id              Int     @id @default(autoincrement())
+  letter          String  @db.Char(1)
+  transcriptionRU String
+  transcriptionEN String
+  exampleWord     String?
+  exampleWordRU   String?
+  exampleWordEN   String?
+  audioUrl        String?
+}
+
 enum Role {
   USER
   MODERATOR
@@ -153,38 +182,4 @@ enum ProgressStatus {
 enum ChatRole {
   USER
   AI
-}
-
-model AlphabetLetter {
-  id              Int      @id @default(autoincrement())
-
-  orderIndex      Int      @default(0)
-
-  // Буква
-  uppercase       String   // "Ә"
-  lowercase       String   // "ә"
-
-  // Как произносится
-  pronunciationRu String?
-  pronunciationEn String?
-
-  // Описание / объяснение
-  descriptionRu   String?
-  descriptionEn   String?
-
-  // Примеры слов (лучше хранить как JSON)
-  examples        Json?
-  // пример:
-  // [
-  //   { "kz": "әке", "ru": "отец", "en": "father" }
-  // ]
-
-  // Аудио произношения
-  audioUrl        String?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([uppercase, lowercase])
-  @@index([orderIndex])
 }
