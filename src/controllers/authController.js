@@ -154,7 +154,7 @@ exports.login = async (req, res) => {
     })
   } catch (err) {
     console.error(err)
-    return res.status(500).json({ message: 'Server error' })
+    return res.status(500).json({ message: err })
   }
 }
 
@@ -187,7 +187,7 @@ exports.forgotPassword = async (req, res) => {
     res.json({ message: 'Если email существует, код отправлен' })
   } catch (err) {
     console.error(err)
-    res.status(500).json({ message: 'Server error' })
+    res.status(500).json({ message: err })
   }
 }
 
@@ -225,6 +225,6 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: 'Пароль успешно изменён' })
   } catch (err) {
     console.error(err)
-    res.status(500).json({ message: 'Server error' })
+    res.status(500).json({ message: err })
   }
 }
