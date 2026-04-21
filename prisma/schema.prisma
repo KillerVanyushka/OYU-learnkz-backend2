@@ -106,6 +106,22 @@ model UploadedAudio {
   updatedAt DateTime @updatedAt
 }
 
+model Book {
+  id        Int      @id @default(autoincrement())
+  title     String   @unique
+  format    String
+  pageCount Int
+  author    String
+  fileUrl   String   @db.Text
+  fileKey   String   @unique
+  mimeType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([title])
+  @@index([author])
+}
+
 model UserDictionaryEntry {
   id            Int      @id @default(autoincrement())
   userId        Int
