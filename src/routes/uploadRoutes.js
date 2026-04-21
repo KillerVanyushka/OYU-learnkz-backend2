@@ -2,6 +2,7 @@ const router = require('express').Router()
 const multer = require('multer')
 const { PutObjectCommand } = require('@aws-sdk/client-s3')
 const r2 = require('../utils/r2')
+const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
 const requireRole = require('../middlewares/requireRole')
 
@@ -32,8 +33,27 @@ router.post(
       )
 
       const audioUrl = `${process.env.R2_ENDPOINT}/${process.env.R2_BUCKET}/${key}`
+      const title = String(req.body?.title || req.file.originalname).trim()
 
-      res.json({ audioUrl })
+      const audio = await prisma.uploadedAudio.create({
+        data: {
+          title: title || req.file.originalname,
+          audioUrl,
+        },
+        select: {
+          id: true,
+          title: true,
+          audioUrl: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      })
+
+      res.json({
+        message: 'Audio uploaded successfully',
+        audioUrl,
+        audio,
+      })
     } catch (err) {
       console.error(err)
       res.status(500).json({ message: 'Upload error' })
