@@ -1,6 +1,7 @@
 const express = require('express')
 const prisma = require('../utils/prisma')
-const fetch = require('node-fetch')
+
+const fetchImpl = global.fetch || require('node-fetch').default
 
 const router = express.Router()
 
@@ -57,7 +58,7 @@ router.get('/:id/audio', async (req, res) => {
             return res.status(404).json({ message: 'Audio not found for this letter' })
         }
 
-        const response = await fetch(letter.audioUrl)
+        const response = await fetchImpl(letter.audioUrl)
 
         if (!response.ok) {
             return res.status(502).json({
