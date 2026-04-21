@@ -32,6 +32,7 @@ router.get('/lessons', ...staff, async (req, res) => {
         id: true,
         title: true,
         description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
         isArchived: true,
@@ -51,7 +52,7 @@ router.get('/lessons', ...staff, async (req, res) => {
 // POST /api/admin/lessons
 router.post('/lessons', ...staff, async (req, res) => {
   try {
-    const { title, description, orderIndex, level } = req.body || {}
+    const { title, description, lectureText, orderIndex, level } = req.body || {}
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ message: 'title is required' })
@@ -70,12 +71,14 @@ router.post('/lessons', ...staff, async (req, res) => {
         title: String(title).trim(),
         level: normalizedLevel,
         description: description ? String(description).trim() : null,
+        lectureText: lectureText ? String(lectureText).trim() : null,
         orderIndex: Number.isFinite(parsedOrderIndex) ? parsedOrderIndex : 0,
       },
       select: {
         id: true,
         title: true,
         description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
         isArchived: true,
@@ -102,7 +105,7 @@ router.patch('/lessons/:id', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid lesson id' })
     }
 
-    const { title, description, orderIndex, isArchived, level } = req.body || {}
+    const { title, description, lectureText, orderIndex, isArchived, level } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -114,6 +117,10 @@ router.patch('/lessons/:id', ...staff, async (req, res) => {
 
     if (description !== undefined) {
       data.description = description === null ? null : String(description).trim()
+    }
+
+    if (lectureText !== undefined) {
+      data.lectureText = lectureText === null ? null : String(lectureText).trim()
     }
 
     if (orderIndex !== undefined) {
@@ -145,6 +152,7 @@ router.patch('/lessons/:id', ...staff, async (req, res) => {
         id: true,
         title: true,
         description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
         isArchived: true,
@@ -187,6 +195,7 @@ router.patch('/lessons/:id/archive', ...staff, async (req, res) => {
         id: true,
         title: true,
         description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
         isArchived: true,

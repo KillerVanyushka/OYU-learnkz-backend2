@@ -42,6 +42,8 @@ router.get('/me', requireAuth, async (req, res) => {
       select: {
         id: true,
         title: true,
+        description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
       },
@@ -57,6 +59,8 @@ router.get('/me', requireAuth, async (req, res) => {
     const result = lessons.map((l) => ({
       lessonId: l.id,
       title: l.title,
+      description: l.description,
+      lectureText: l.lectureText,
       level: l.level,
       orderIndex: l.orderIndex,
       status: map.get(l.id)?.status ?? 'NOT_STARTED',
@@ -140,6 +144,8 @@ router.get('/completed', requireAuth, async (req, res) => {
         lesson: {
           select: {
             title: true,
+            description: true,
+            lectureText: true,
             level: true,
             orderIndex: true,
           },
@@ -154,6 +160,8 @@ router.get('/completed', requireAuth, async (req, res) => {
     const result = rows.map((r) => ({
       lessonId: r.lessonId,
       title: r.lesson.title,
+      description: r.lesson.description,
+      lectureText: r.lesson.lectureText,
       level: r.lesson.level,
       orderIndex: r.lesson.orderIndex,
       score: r.score,
@@ -181,7 +189,13 @@ router.get('/in-progress', requireAuth, async (req, res) => {
         score: true,
         updatedAt: true,
         lesson: {
-          select: { title: true, level: true, orderIndex: true },
+          select: {
+            title: true,
+            description: true,
+            lectureText: true,
+            level: true,
+            orderIndex: true,
+          },
         },
       },
       orderBy: [
@@ -193,6 +207,8 @@ router.get('/in-progress', requireAuth, async (req, res) => {
     const result = rows.map((r) => ({
       lessonId: r.lessonId,
       title: r.lesson.title,
+      description: r.lesson.description,
+      lectureText: r.lesson.lectureText,
       level: r.lesson.level,
       orderIndex: r.lesson.orderIndex,
       score: r.score,
@@ -224,7 +240,14 @@ router.get('/not-started', requireAuth, async (req, res) => {
       where: {
         isArchived: false,
       },
-      select: { id: true, title: true, level: true, orderIndex: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        lectureText: true,
+        level: true,
+        orderIndex: true,
+      },
       orderBy: [{ level: 'asc' }, { orderIndex: 'asc' }, { id: 'asc' }],
     })
 
@@ -246,6 +269,8 @@ router.get('/not-started', requireAuth, async (req, res) => {
       .map((l) => ({
         lessonId: l.id,
         title: l.title,
+        description: l.description,
+        lectureText: l.lectureText,
         level: l.level,
         orderIndex: l.orderIndex,
         score: 0,

@@ -20,6 +20,7 @@ router.get('/', requireAuth, async (req, res) => {
         id: true,
         title: true,
         description: true,
+        lectureText: true,
         level: true,
         orderIndex: true,
       },
@@ -52,7 +53,7 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
 
     const lesson = await prisma.lesson.findFirst({
       where: { id: lessonId, isArchived: false },
-      select: { id: true, level: true },
+      select: { id: true, level: true, lectureText: true },
     })
 
     if (!lesson) return res.status(404).json({ message: 'Lesson not found' })
