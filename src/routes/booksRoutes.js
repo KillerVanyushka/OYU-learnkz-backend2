@@ -18,6 +18,7 @@ const BOOK_SELECT = {
 }
 
 const FORMAT_TO_MIME = {
+  fb2: 'application/x-fictionbook+xml',
   pdf: 'application/pdf',
   epub: 'application/epub+zip',
   txt: 'text/plain; charset=utf-8',
@@ -114,7 +115,7 @@ async function streamBookFile(book, res) {
   res.setHeader('Cache-Control', 'public, max-age=86400')
   res.setHeader(
     'Content-Disposition',
-    `inline; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
+    `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
   )
   obj.Body.pipe(res)
 }
