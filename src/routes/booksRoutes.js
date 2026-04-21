@@ -17,6 +17,45 @@ const BOOK_SELECT = {
   updatedAt: true,
 }
 
+const FORMAT_TO_MIME = {
+  pdf: 'application/pdf',
+  epub: 'application/epub+zip',
+  txt: 'text/plain; charset=utf-8',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+function normalizeFileNamePart(value) {
+  return String(value || 'book')
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/\s+/g, ' ')
+}
+
+function resolveMimeType(book, objectMimeType) {
+  const explicitMime = String(book.mimeType || '').trim().toLowerCase()
+  if (explicitMime && explicitMime !== 'application/octet-stream') {
+    return book.mimeType
+  }
+
+  const formatMime = FORMAT_TO_MIME[String(book.format || '').trim().toLowerCase()]
+  if (formatMime) {
+    return formatMime
+  }
+
+  return objectMimeType || 'application/octet-stream'
+}
+
+function buildDownloadFileName(book) {
+  const baseName = normalizeFileNamePart(book.title)
+  const format = String(book.format || '').trim().toLowerCase()
+
+  if (!format) return baseName
+  if (baseName.toLowerCase().endsWith(`.${format}`)) return baseName
+
+  return `${baseName}.${format}`
+}
+
 function extractKeyFromUrl(fileUrl) {
   if (!fileUrl) return null
 
@@ -64,11 +103,19 @@ async function streamBookFile(book, res) {
     }),
   )
 
-  res.setHeader('Content-Type', book.mimeType || obj.ContentType || 'application/octet-stream')
+  const downloadName = buildDownloadFileName(book)
+  const encodedName = encodeURIComponent(downloadName)
+  const contentType = resolveMimeType(book, obj.ContentType)
+
+  res.setHeader('Content-Type', contentType)
   if (obj.ContentLength) {
     res.setHeader('Content-Length', String(obj.ContentLength))
   }
   res.setHeader('Cache-Control', 'public, max-age=86400')
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
+  )
   obj.Body.pipe(res)
 }
 
