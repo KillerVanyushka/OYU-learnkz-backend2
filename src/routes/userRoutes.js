@@ -2,6 +2,85 @@ const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
 
+const ONBOARDING_QUESTIONNAIRE = {
+  goals: [
+    'Учёба',
+    'Работа',
+    'Путешествия',
+    'Общение с друзьями/семьёй',
+    'Переезд',
+    'Другое',
+  ],
+  studyMinutesDaily: [5, 10, 15, 30],
+  currentLevels: [
+    'Никогда не изучал (A0)',
+    'Начальный (A1)',
+    'Средний (A2–B1)',
+    'Продвинутый',
+  ],
+  learningStyles: ['Читать', 'Слушать', 'Писать', 'Комбинированно'],
+  focusAreas: ['Разговор', 'Понимание на слух', 'Грамматика', 'Словарный запас'],
+  preferredPaces: ['Лёгкий', 'Средний', 'Интенсивный'],
+}
+
+function normalizeTextAnswer(value) {
+  return String(value || '').trim()
+}
+
+function validateOnboardingPayload(body) {
+  const goal = normalizeTextAnswer(body?.goal)
+  const studyMinutesDaily = Number(body?.studyMinutesDaily)
+  const currentLevel = normalizeTextAnswer(body?.currentLevel)
+  const learningStyle = normalizeTextAnswer(body?.learningStyle)
+  const focusArea = normalizeTextAnswer(body?.focusArea)
+  const preferredPace = normalizeTextAnswer(body?.preferredPace)
+
+  if (!ONBOARDING_QUESTIONNAIRE.goals.includes(goal)) {
+    return { error: `goal must be one of: ${ONBOARDING_QUESTIONNAIRE.goals.join(', ')}` }
+  }
+
+  if (!ONBOARDING_QUESTIONNAIRE.studyMinutesDaily.includes(studyMinutesDaily)) {
+    return {
+      error: `studyMinutesDaily must be one of: ${ONBOARDING_QUESTIONNAIRE.studyMinutesDaily.join(', ')}`,
+    }
+  }
+
+  if (!ONBOARDING_QUESTIONNAIRE.currentLevels.includes(currentLevel)) {
+    return {
+      error: `currentLevel must be one of: ${ONBOARDING_QUESTIONNAIRE.currentLevels.join(', ')}`,
+    }
+  }
+
+  if (!ONBOARDING_QUESTIONNAIRE.learningStyles.includes(learningStyle)) {
+    return {
+      error: `learningStyle must be one of: ${ONBOARDING_QUESTIONNAIRE.learningStyles.join(', ')}`,
+    }
+  }
+
+  if (!ONBOARDING_QUESTIONNAIRE.focusAreas.includes(focusArea)) {
+    return {
+      error: `focusArea must be one of: ${ONBOARDING_QUESTIONNAIRE.focusAreas.join(', ')}`,
+    }
+  }
+
+  if (!ONBOARDING_QUESTIONNAIRE.preferredPaces.includes(preferredPace)) {
+    return {
+      error: `preferredPace must be one of: ${ONBOARDING_QUESTIONNAIRE.preferredPaces.join(', ')}`,
+    }
+  }
+
+  return {
+    data: {
+      goal,
+      studyMinutesDaily,
+      currentLevel,
+      learningStyle,
+      focusArea,
+      preferredPace,
+    },
+  }
+}
+
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -123,6 +202,111 @@ router.get('/me/stats', requireAuth, async (req, res) => {
         month: monthXp._sum.amount ?? 0,
         allTime: user.xp ?? 0,
       },
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.get('/onboarding/questions', requireAuth, async (req, res) => {
+  return res.json({
+    questions: [
+      {
+        key: 'goal',
+        question: 'Зачем вы хотите изучать казахский язык?',
+        options: ONBOARDING_QUESTIONNAIRE.goals,
+      },
+      {
+        key: 'studyMinutesDaily',
+        question: 'Сколько времени вы готовы уделять в день?',
+        options: ONBOARDING_QUESTIONNAIRE.studyMinutesDaily.map((minutes) =>
+          minutes >= 30 ? '30+ минут' : `${minutes} минут`,
+        ),
+      },
+      {
+        key: 'currentLevel',
+        question: 'Ваш уровень:',
+        options: ONBOARDING_QUESTIONNAIRE.currentLevels,
+      },
+      {
+        key: 'learningStyle',
+        question: 'Как вам удобнее учиться?',
+        options: ONBOARDING_QUESTIONNAIRE.learningStyles,
+      },
+      {
+        key: 'focusArea',
+        question: 'Что хотите развить в первую очередь?',
+        options: ONBOARDING_QUESTIONNAIRE.focusAreas,
+      },
+      {
+        key: 'preferredPace',
+        question: 'Какой темп вам подходит?',
+        options: ONBOARDING_QUESTIONNAIRE.preferredPaces,
+      },
+    ],
+  })
+})
+
+router.get('/onboarding/answers', requireAuth, async (req, res) => {
+  try {
+    const answers = await prisma.userOnboardingAnswer.findUnique({
+      where: { userId: req.userId },
+      select: {
+        id: true,
+        userId: true,
+        goal: true,
+        studyMinutesDaily: true,
+        currentLevel: true,
+        learningStyle: true,
+        focusArea: true,
+        preferredPace: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.json({
+      answers,
+      questions: ONBOARDING_QUESTIONNAIRE,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.post('/onboarding/answers', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = validateOnboardingPayload(req.body)
+    if (error) {
+      return res.status(400).json({ message: error })
+    }
+
+    const answers = await prisma.userOnboardingAnswer.upsert({
+      where: { userId: req.userId },
+      update: data,
+      create: {
+        userId: req.userId,
+        ...data,
+      },
+      select: {
+        id: true,
+        userId: true,
+        goal: true,
+        studyMinutesDaily: true,
+        currentLevel: true,
+        learningStyle: true,
+        focusArea: true,
+        preferredPace: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.status(201).json({
+      message: 'Onboarding answers saved successfully',
+      answers,
     })
   } catch (err) {
     console.error(err)
