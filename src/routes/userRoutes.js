@@ -42,6 +42,82 @@ router.get('/me/streak', requireAuth, async (req, res) => {
   })
 })
 
+// POST /api/user/dictionary
+router.post('/dictionary', requireAuth, async (req, res) => {
+  try {
+    const { word, translationEn, translationRu, description } = req.body || {}
+
+    if (!word || !String(word).trim()) {
+      return res.status(400).json({ message: 'word is required' })
+    }
+
+    const entry = await prisma.userDictionaryEntry.create({
+      data: {
+        userId: req.userId,
+        word: String(word).trim(),
+        translationEn:
+          translationEn === undefined || translationEn === null
+            ? null
+            : String(translationEn).trim(),
+        translationRu:
+          translationRu === undefined || translationRu === null
+            ? null
+            : String(translationRu).trim(),
+        description:
+          description === undefined || description === null
+            ? null
+            : String(description).trim(),
+      },
+      select: {
+        id: true,
+        word: true,
+        translationEn: true,
+        translationRu: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.status(201).json({
+      message: 'Word saved to dictionary',
+      entry,
+    })
+  } catch (err) {
+    console.error(err)
+    if (err.code === 'P2002') {
+      return res
+        .status(409)
+        .json({ message: 'This word is already in your dictionary' })
+    }
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// GET /api/user/dictionary
+router.get('/dictionary', requireAuth, async (req, res) => {
+  try {
+    const entries = await prisma.userDictionaryEntry.findMany({
+      where: { userId: req.userId },
+      select: {
+        id: true,
+        word: true,
+        translationEn: true,
+        translationRu: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+
+    return res.json(entries)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // ------------------------------
 // FOLLOW CRUD
 // БАЗОВЫЕ ЭНДПОИНТЫ:
