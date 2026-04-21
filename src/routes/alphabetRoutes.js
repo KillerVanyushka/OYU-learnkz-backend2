@@ -1,9 +1,33 @@
 const express = require('express')
 const prisma = require('../utils/prisma')
-
-const fetchImpl = global.fetch || require('node-fetch').default
+const { GetObjectCommand } = require('@aws-sdk/client-s3')
+const r2 = require('../utils/r2')
 
 const router = express.Router()
+
+function extractKeyFromAudioUrl(audioUrl) {
+    if (!audioUrl) return null
+
+    const publicBase = process.env.R2_PUBLIC_BASE_URL
+    const endpoint = process.env.R2_ENDPOINT
+    const bucket = process.env.R2_BUCKET
+
+    if (publicBase) {
+        const normalizedBase = publicBase.replace(/\/$/, '')
+        if (audioUrl.startsWith(normalizedBase + '/')) {
+            return audioUrl.slice((normalizedBase + '/').length)
+        }
+    }
+
+    if (endpoint && bucket) {
+        const prefix = `${endpoint.replace(/\/$/, '')}/${bucket}/`
+        if (audioUrl.startsWith(prefix)) {
+            return audioUrl.slice(prefix.length)
+        }
+    }
+
+    return null
+}
 
 // GET /api/alphabet - список букв
 router.get('/', async (req, res) => {
@@ -58,23 +82,25 @@ router.get('/:id/audio', async (req, res) => {
             return res.status(404).json({ message: 'Audio not found for this letter' })
         }
 
-        const response = await fetchImpl(letter.audioUrl)
-
-        if (!response.ok) {
-            return res.status(502).json({
-                message: 'Failed to fetch remote audio',
-                status: response.status,
-            })
+        const key = extractKeyFromAudioUrl(letter.audioUrl)
+        if (!key) {
+            return res.status(500).json({ message: 'Bad audioUrl format' })
         }
 
-        const contentType = response.headers.get('content-type') || 'audio/mpeg'
-        res.setHeader('Content-Type', contentType)
+        const obj = await r2.send(
+            new GetObjectCommand({
+                Bucket: process.env.R2_BUCKET,
+                Key: key,
+            }),
+        )
+
+        res.setHeader('Content-Type', obj.ContentType || 'audio/mpeg')
+        if (obj.ContentLength) {
+            res.setHeader('Content-Length', String(obj.ContentLength))
+        }
         res.setHeader('Cache-Control', 'public, max-age=86400')
 
-        const arrayBuffer = await response.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-
-        res.send(buffer)
+        obj.Body.pipe(res)
     } catch (e) {
         console.error(e)
         res.status(500).json({ message: 'Failed to stream audio' })
