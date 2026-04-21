@@ -177,17 +177,26 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
 
     // ✅ если верно — начисляем XP и score урока
     if (isCorrect) {
-      await prisma.user.update({
-        where: { id: req.userId },
-        data: { xp: { increment: task.xpReward } },
-      })
-
-      await prisma.progress.update({
-        where: {
-          userId_lessonId: { userId: req.userId, lessonId: task.lessonId },
-        },
-        data: { score: { increment: task.xpReward } },
-      })
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: req.userId },
+          data: { xp: { increment: task.xpReward } },
+        }),
+        prisma.progress.update({
+          where: {
+            userId_lessonId: { userId: req.userId, lessonId: task.lessonId },
+          },
+          data: { score: { increment: task.xpReward } },
+        }),
+        prisma.userXpHistory.create({
+          data: {
+            userId: req.userId,
+            amount: task.xpReward,
+            source: 'TASK_CORRECT',
+            taskAttemptId: attempt.id,
+          },
+        }),
+      ])
     }
 
     const totalTasks = await prisma.task.count({
