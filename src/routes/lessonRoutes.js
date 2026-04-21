@@ -86,4 +86,65 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
   }
 })
 
+// POST /api/lessons/:id/lecture/complete
+router.post('/:id/lecture/complete', requireAuth, async (req, res) => {
+  try {
+    const lessonId = Number(req.params.id)
+    if (Number.isNaN(lessonId)) {
+      return res.status(400).json({ message: 'Invalid lesson id' })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { level: true },
+    })
+    const userRank = LEVEL_ORDER[user?.level ?? 'A0']
+
+    const lesson = await prisma.lesson.findFirst({
+      where: { id: lessonId, isArchived: false },
+      select: { id: true, level: true, lectureText: true },
+    })
+
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' })
+    }
+
+    if (LEVEL_ORDER[lesson.level] > userRank) {
+      return res
+        .status(403)
+        .json({ message: 'Lesson is locked for your level' })
+    }
+
+    if (!lesson.lectureText) {
+      return res.status(400).json({ message: 'Lesson has no lecture' })
+    }
+
+    const lectureProgress = await prisma.userLectureProgress.upsert({
+      where: {
+        userId_lessonId: { userId: req.userId, lessonId },
+      },
+      create: {
+        userId: req.userId,
+        lessonId,
+      },
+      update: {},
+      select: {
+        id: true,
+        userId: true,
+        lessonId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.json({
+      message: 'Lecture marked as completed',
+      lectureProgress,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router

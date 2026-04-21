@@ -42,6 +42,94 @@ router.get('/me/streak', requireAuth, async (req, res) => {
   })
 })
 
+// GET /api/user/me/stats
+router.get('/me/stats', requireAuth, async (req, res) => {
+  try {
+    const now = Date.now()
+    const dayStart = new Date(now - 24 * 60 * 60 * 1000)
+    const weekStart = new Date(now - 7 * 24 * 60 * 60 * 1000)
+    const monthStart = new Date(now - 30 * 24 * 60 * 60 * 1000)
+
+    const [
+      user,
+      completedLessonsCount,
+      inProgressLessonsCount,
+      completedLecturesCount,
+      dayXp,
+      weekXp,
+      monthXp,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { id: true, xp: true },
+      }),
+      prisma.progress.count({
+        where: {
+          userId: req.userId,
+          status: 'COMPLETED',
+          lesson: { isArchived: false },
+        },
+      }),
+      prisma.progress.count({
+        where: {
+          userId: req.userId,
+          status: 'IN_PROGRESS',
+          lesson: { isArchived: false },
+        },
+      }),
+      prisma.userLectureProgress.count({
+        where: {
+          userId: req.userId,
+          lesson: {
+            isArchived: false,
+            lectureText: { not: null },
+          },
+        },
+      }),
+      prisma.userXpHistory.aggregate({
+        where: {
+          userId: req.userId,
+          createdAt: { gte: dayStart },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.userXpHistory.aggregate({
+        where: {
+          userId: req.userId,
+          createdAt: { gte: weekStart },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.userXpHistory.aggregate({
+        where: {
+          userId: req.userId,
+          createdAt: { gte: monthStart },
+        },
+        _sum: { amount: true },
+      }),
+    ])
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    return res.json({
+      completedLessons: completedLessonsCount,
+      inProgressLessons: inProgressLessonsCount,
+      completedLectures: completedLecturesCount,
+      xp: {
+        day: dayXp._sum.amount ?? 0,
+        week: weekXp._sum.amount ?? 0,
+        month: monthXp._sum.amount ?? 0,
+        allTime: user.xp ?? 0,
+      },
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // POST /api/user/dictionary
 router.post('/dictionary', requireAuth, async (req, res) => {
   try {
