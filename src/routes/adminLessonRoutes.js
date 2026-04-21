@@ -25,7 +25,7 @@ function normalizeLang(lang) {
 }
 
 // GET /api/admin/lessons
-router.get('/lessons', ...staff, async (req, res) => {
+router.get('/lessons', requireAuth, async (req, res) => {
   try {
     const lessons = await prisma.lesson.findMany({
       select: {
