@@ -34,14 +34,14 @@ function normalizeFileNamePart(value) {
 }
 
 function resolveMimeType(book, objectMimeType) {
-  const explicitMime = String(book.mimeType || '').trim().toLowerCase()
-  if (explicitMime && explicitMime !== 'application/octet-stream') {
-    return book.mimeType
-  }
-
   const formatMime = FORMAT_TO_MIME[String(book.format || '').trim().toLowerCase()]
   if (formatMime) {
     return formatMime
+  }
+
+  const explicitMime = String(book.mimeType || '').trim().toLowerCase()
+  if (explicitMime && explicitMime !== 'application/octet-stream') {
+    return book.mimeType
   }
 
   return objectMimeType || 'application/octet-stream'
@@ -113,6 +113,7 @@ async function streamBookFile(book, res) {
     res.setHeader('Content-Length', String(obj.ContentLength))
   }
   res.setHeader('Cache-Control', 'public, max-age=86400')
+  res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader(
     'Content-Disposition',
     `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
