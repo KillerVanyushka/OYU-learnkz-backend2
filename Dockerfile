@@ -7,4 +7,4 @@ COPY prisma ./prisma/
 RUN npx prisma generate
 COPY . .
 EXPOSE 5000
-CMD ["npx", "prisma", "db", "push", "--schema=./prisma/schema.prisma", "&&", "node", "src/index.js"]
+CMD ["sh", "-c", "npx prisma db push --schema=./prisma/schema.prisma && node src/index.js"]
