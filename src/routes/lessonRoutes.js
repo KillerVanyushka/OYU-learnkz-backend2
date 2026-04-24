@@ -73,6 +73,7 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
         targetLang: true,
         promptText: true,
         optionsWords: true,
+        correctWords: true,
         xpReward: true,
         orderIndex: true,
       },
