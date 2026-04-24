@@ -646,22 +646,32 @@ router.delete('/me', requireAuth, async (req, res) => {
   }
 })
 
-router.get('/by-nickname/:nickname', requireAuth, async (req, res) => {
+router.get('/search-nickname/:nickname', requireAuth, async (req, res) => {
   try {
     const { nickname } = req.params
-    const user = await prisma.user.findUnique({
-      where: { nickname },
+
+    if (!nickname || nickname.trim().length < 1) {
+      return res.json([])
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        nickname: {
+          contains: nickname.trim(),
+          mode: 'insensitive', // регистронезависимый поиск
+        },
+      },
       select: {
         id: true,
         username: true,
         nickname: true,
         level: true,
         xp: true,
-        createdAt: true,
       },
+      take: 10, // лимит результатов
     })
-    if (!user) return res.status(404).json({ message: 'User not found' })
-    res.json(user)
+
+    res.json(users)
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Server error' })
