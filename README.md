@@ -1,1 +1,1 @@
-# PyLearn API — Backend for LearnKZ
+# PyLearn API - Backend for LearnKZ
