@@ -1,1 +1,1 @@
-# PyLearn API — Backend for learnkz.kazi.rocks
+# PyLearn API — Backend for LearnKZ
