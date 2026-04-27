@@ -123,6 +123,21 @@ model Book {
   @@index([author])
 }
 
+model AudioBook {
+  id        Int      @id @default(autoincrement())
+  title     String   @unique
+  format    String
+  author    String
+  fileUrl   String   @db.Text
+  fileKey   String   @unique
+  mimeType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([title])
+  @@index([author])
+}
+
 model UserDictionaryEntry {
   id            Int      @id @default(autoincrement())
   userId        Int

@@ -22,6 +22,8 @@ const alphabetRoutes = require('./routes/alphabetRoutes')
 const adminAlphabetRoutes = require('./routes/adminAlphabetRoutes')
 const booksRoutes = require('./routes/booksRoutes')
 const adminBookRoutes = require('./routes/adminBookRoutes')
+const audioBooksRoutes = require('./routes/audioBooksRoutes')
+const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
 
 const app = express()
 
@@ -53,6 +55,8 @@ app.use('/api/alphabet', alphabetRoutes)
 app.use('/api/admin/alphabet', adminAlphabetRoutes)
 app.use('/api/books', booksRoutes)
 app.use('/api/admin', adminBookRoutes)
+app.use('/api/audio-books', audioBooksRoutes)
+app.use('/api/admin', adminAudioBookRoutes)
 
 const PORT = process.env.PORT || 5000
 
