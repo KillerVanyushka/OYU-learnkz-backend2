@@ -11,7 +11,7 @@ const requireAuth = require('../middlewares/requireAuth')
 const requireRole = require('../middlewares/requireRole')
 
 const router = express.Router()
-const staff = [requireAuth, requireRole('ADMIN', 'MODERATOR')]
+const staff = [requireAuth, requireRole('MODERATOR')]
 
 const upload = multer({
   storage: multer.memoryStorage(),
