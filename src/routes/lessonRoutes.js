@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
+const { buildMatchingOptions } = require('../utils/taskMatching')
 
 const LEVEL_ORDER = { A0: 0, A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 }
 
@@ -80,7 +81,22 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
       orderBy: [{ orderIndex: 'asc' }, { id: 'asc' }],
     })
 
-    res.json(tasks)
+    const serializedTasks = tasks.map((task) => {
+      if (task.type !== 'WORD_MATCH') {
+        return task
+      }
+
+      const matchingOptions = buildMatchingOptions(task.optionsWords)
+
+      return {
+        ...task,
+        optionsWords: undefined,
+        correctWords: undefined,
+        matchingOptions,
+      }
+    })
+
+    res.json(serializedTasks)
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Server error' })

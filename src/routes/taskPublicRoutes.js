@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
+const { buildMatchingOptions } = require('../utils/taskMatching')
 
 const LEVEL_ORDER = { A0: 0, A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 }
 
@@ -49,6 +50,10 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     // убираем вложенную lesson из ответа
     const { lesson, ...cleanTask } = task
+    if (cleanTask.type === 'WORD_MATCH') {
+      cleanTask.matchingOptions = buildMatchingOptions(cleanTask.optionsWords)
+      delete cleanTask.optionsWords
+    }
     return res.json(cleanTask)
   } catch (err) {
     console.error(err)

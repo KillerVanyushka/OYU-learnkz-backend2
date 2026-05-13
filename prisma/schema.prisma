@@ -270,6 +270,7 @@ enum TaskType {
   SENTENCE_BUILD
   AUDIO_DICTATION
   AUDIO_TRANSLATE
+  WORD_MATCH
 }
 
 enum Lang {

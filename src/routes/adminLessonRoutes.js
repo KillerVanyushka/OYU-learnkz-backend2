@@ -2,11 +2,12 @@ const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
 const requireRole = require('../middlewares/requireRole')
+const { normalizeMatchPairs } = require('../utils/taskMatching')
 
 const staff = [requireAuth, requireRole('ADMIN', 'MODERATOR')]
 
 const ALLOWED_LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
-const ALLOWED_TASK_TYPES = ['SENTENCE_BUILD', 'AUDIO_DICTATION', 'AUDIO_TRANSLATE']
+const ALLOWED_TASK_TYPES = ['SENTENCE_BUILD', 'AUDIO_DICTATION', 'AUDIO_TRANSLATE', 'WORD_MATCH']
 const ALLOWED_LANGS = ['KZ', 'RU', 'EN']
 
 function normalizeLevel(level) {
@@ -248,6 +249,7 @@ router.post('/lessons/:id/tasks', ...staff, async (req, res) => {
       audioUrl,
       audioText,
       translateText,
+      matchingPairs,
     } = req.body || {}
 
     const taskType = normalizeTaskType(type ?? 'SENTENCE_BUILD')
@@ -314,6 +316,18 @@ router.post('/lessons/:id/tasks', ...staff, async (req, res) => {
       }
     }
 
+    let normalizedMatchingPairs = null
+    if (taskType === 'WORD_MATCH') {
+      normalizedMatchingPairs = normalizeMatchPairs(matchingPairs ?? optionsWords)
+
+      if (!normalizedMatchingPairs || normalizedMatchingPairs.length === 0) {
+        return res.status(400).json({
+          message:
+            'matchingPairs must be a non-empty array of objects with id, left and right',
+        })
+      }
+    }
+
     const parsedXpReward = Number(xpReward)
     const parsedOrderIndex = Number(orderIndex)
 
@@ -325,10 +339,18 @@ router.post('/lessons/:id/tasks', ...staff, async (req, res) => {
         targetLang: normalizedTargetLang,
 
         promptText: taskType === 'SENTENCE_BUILD' ? String(promptText).trim() : null,
-        optionsWords: taskType === 'SENTENCE_BUILD' ? optionsWords : undefined,
+        optionsWords:
+          taskType === 'SENTENCE_BUILD'
+            ? optionsWords
+            : taskType === 'WORD_MATCH'
+              ? normalizedMatchingPairs
+              : undefined,
         correctWords: taskType === 'SENTENCE_BUILD' ? correctWords : undefined,
 
-        audioUrl: taskType !== 'SENTENCE_BUILD' ? String(audioUrl).trim() : null,
+        audioUrl:
+          taskType === 'AUDIO_DICTATION' || taskType === 'AUDIO_TRANSLATE'
+            ? String(audioUrl).trim()
+            : null,
         audioText:
             taskType === 'AUDIO_DICTATION'
                 ? String(audioText).trim()
@@ -372,6 +394,7 @@ router.patch('/tasks/:id', ...staff, async (req, res) => {
       audioUrl,
       audioText,
       translateText,
+      matchingPairs,
     } = req.body || {}
 
     const data = {}
@@ -454,6 +477,19 @@ router.patch('/tasks/:id', ...staff, async (req, res) => {
 
     if (translateText !== undefined) {
       data.translateText = translateText === null ? null : String(translateText).trim()
+    }
+
+    if (matchingPairs !== undefined) {
+      const normalizedMatchingPairs = normalizeMatchPairs(matchingPairs)
+
+      if (!normalizedMatchingPairs || normalizedMatchingPairs.length === 0) {
+        return res.status(400).json({
+          message:
+            'matchingPairs must be a non-empty array of objects with id, left and right',
+        })
+      }
+
+      data.optionsWords = normalizedMatchingPairs
     }
 
     const task = await prisma.task.update({

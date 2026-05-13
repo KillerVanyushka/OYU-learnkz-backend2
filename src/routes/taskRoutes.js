@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
+const { evaluateWordMatch } = require('../utils/taskMatching')
 
 const LEVEL_ORDER = { A0: 0, A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 }
 
@@ -30,7 +31,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
     if (Number.isNaN(taskId))
       return res.status(400).json({ message: 'Invalid task id' })
 
-    const { answerWords, answerText } = req.body || {}
+    const { answerWords, answerText, answerPairs } = req.body || {}
 
     const task = await prisma.task.findFirst({
       where: { id: taskId, isArchived: false, lesson: { isArchived: false } },
@@ -42,6 +43,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
         xpReward: true,
         audioText: true,
         translateText: true,
+        optionsWords: true,
         lesson: { select: { level: true } },
       },
     })
@@ -99,6 +101,20 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
       isCorrect = normalize(answerText) === normalize(task.translateText)
     }
 
+    let pairResults = undefined
+
+    if (task.type === 'WORD_MATCH') {
+      const evaluation = evaluateWordMatch(answerPairs, task.optionsWords)
+
+      if (evaluation.error) {
+        const statusCode = evaluation.error.startsWith('answerPairs') ? 400 : 500
+        return res.status(statusCode).json({ message: evaluation.error })
+      }
+
+      isCorrect = evaluation.isCorrect
+      pairResults = evaluation.pairResults
+    }
+
     // ✅ создаём/обновляем прогресс урока (если нет — создастся)
     await prisma.progress.upsert({
       where: {
@@ -114,7 +130,11 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
     })
 
     const attemptAnswer =
-      task.type === 'SENTENCE_BUILD' ? answerWords : answerText
+      task.type === 'SENTENCE_BUILD'
+        ? answerWords
+        : task.type === 'WORD_MATCH'
+          ? answerPairs
+          : answerText
 
     const existingAttempt = await prisma.taskAttempt.findUnique({
       where: { userId_taskId: { userId: req.userId, taskId: task.id } },
@@ -125,7 +145,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
     let attempt
 
     if (existingAttempt?.isCorrect) {
-      return res.json({ isCorrect, earnedXp: 0, alreadySubmitted: true })
+      return res.json({ isCorrect, earnedXp: 0, alreadySubmitted: true, pairResults })
     }
 
     if (!existingAttempt) {
@@ -273,6 +293,7 @@ router.post('/:id/submit', requireAuth, async (req, res) => {
       earnedXp: attempt.earnedXp,
       alreadySubmitted: false,
       lessonStatus,
+      pairResults,
     })
   } catch (err) {
     console.error(err)
