@@ -25,6 +25,8 @@ const adminBookRoutes = require('./routes/adminBookRoutes')
 const audioBooksRoutes = require('./routes/audioBooksRoutes')
 const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
 
+const alphabetGameRoutes=require('./routes/alphabetGame')
+
 const app = express()
 
 app.use(cors())
@@ -46,6 +48,10 @@ app.use('/api/lessons', lessonRoutes)
 app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/progress', progressRoutes)
 app.use('/api/chat', chatRoutes);
+
+
+app.use('/api/alphabet-game', alphabetGameRoutes)
+
 
 app.use('/api/tasks', taskRoutes)
 app.use('/api/tasks', taskPublicRoutes)
