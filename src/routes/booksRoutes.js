@@ -230,4 +230,107 @@ router.get('/:id/file', async (req, res) => {
   }
 })
 
+// CREATE
+router.post('/', async (req, res) => {
+  try {
+    const {
+      title,
+      author,
+      format,
+      pageCount,
+      fileUrl,
+      mimeType,
+      fileKey,
+    } = req.body
+
+    const book = await prisma.book.create({
+      data: {
+        title,
+        author,
+        format,
+        pageCount,
+        fileUrl,
+        mimeType,
+        fileKey,
+      },
+      select: BOOK_SELECT,
+    })
+
+    res.status(201).json(book)
+  } catch (err) {
+    console.error('POST /api/books error:', err)
+    res.status(500).json({ message: 'Failed to create book' })
+  }
+})
+
+// UPDATE
+router.put('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid book id' })
+    }
+
+    const {
+      title,
+      author,
+      format,
+      pageCount,
+      fileUrl,
+      mimeType,
+      fileKey,
+    } = req.body
+
+    const book = await prisma.book.update({
+      where: { id },
+      data: {
+        title,
+        author,
+        format,
+        pageCount,
+        fileUrl,
+        mimeType,
+        fileKey,
+      },
+      select: BOOK_SELECT,
+    })
+
+    res.json(book)
+  } catch (err) {
+    console.error('PUT /api/books/:id error:', err)
+
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'Book not found' })
+    }
+
+    res.status(500).json({ message: 'Failed to update book' })
+  }
+})
+
+// DELETE
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid book id' })
+    }
+
+    await prisma.book.delete({
+      where: { id },
+    })
+
+    res.status(204).send()
+  } catch (err) {
+    console.error('DELETE /api/books/:id error:', err)
+
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'Book not found' })
+    }
+
+    res.status(500).json({ message: 'Failed to delete book' })
+  }
+})
+
 module.exports = router
