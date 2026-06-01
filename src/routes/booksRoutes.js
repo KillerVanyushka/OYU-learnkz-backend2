@@ -110,7 +110,7 @@ async function findBookByTitle(title) {
   })
 }
 
-async function streamBookFile(book, res) {
+async function streamBookFile(book, res, disposition = 'attachment') {
   const key = book.fileKey || extractKeyFromUrl(book.fileUrl)
   if (!key) {
     return res.status(500).json({ message: 'Bad fileUrl format' })
@@ -133,9 +133,12 @@ async function streamBookFile(book, res) {
   }
   res.setHeader('Cache-Control', 'public, max-age=86400')
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  const mode = String(disposition || '').trim().toLowerCase() === 'inline'
+    ? 'inline'
+    : 'attachment'
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
+    `${mode}; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
   )
   obj.Body.pipe(res)
 }
@@ -195,7 +198,7 @@ router.get('/by-title/:title/file', async (req, res) => {
       return res.status(404).json({ message: 'Book not found' })
     }
 
-    return streamBookFile(book, res)
+    return streamBookFile(book, res, req.query.disposition)
   } catch (err) {
     console.error('GET /api/books/by-title/:title/file error:', err)
     res.status(500).json({ message: 'Failed to stream book file' })
@@ -242,7 +245,7 @@ router.get('/:id/file', async (req, res) => {
       return res.status(404).json({ message: 'Book not found' })
     }
 
-    return streamBookFile(book, res)
+    return streamBookFile(book, res, req.query.disposition)
   } catch (err) {
     console.error('GET /api/books/:id/file error:', err)
     res.status(500).json({ message: 'Failed to stream book file' })
