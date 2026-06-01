@@ -115,6 +115,7 @@ model Book {
   pageCount Int
   author    String
   genre     String?
+  description String? @db.Text
   level     Level    @default(A0)
   fileUrl   String   @db.Text
   fileKey   String   @unique

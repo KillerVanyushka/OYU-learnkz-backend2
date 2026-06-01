@@ -25,6 +25,7 @@ const BOOK_SELECT = {
   pageCount: true,
   author: true,
   genre: true,
+  description: true,
   level: true,
   fileUrl: true,
   fileKey: true,
@@ -158,7 +159,7 @@ router.get('/books', requireAuth, async (req, res) => {
 
 router.post('/books', ...staff, upload.single('file'), async (req, res) => {
   try {
-    const { title, format, pageCount, author, genre, level } = req.body || {}
+    const { title, format, pageCount, author, genre, description, level } = req.body || {}
 
     if (!req.file) {
       return res.status(400).json({ message: 'file is required (field name: file)' })
@@ -223,6 +224,7 @@ router.post('/books', ...staff, upload.single('file'), async (req, res) => {
         pageCount: parsedPageCount,
         author: normalizedAuthor,
         genre: normalizeOptionalText(genre),
+        description: normalizeOptionalText(description),
         level: normalizedLevel || 'A0',
         fileUrl,
         fileKey: key,
@@ -253,7 +255,7 @@ router.patch('/books/:id', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid book id' })
     }
 
-    const { title, format, pageCount, author, genre, level } = req.body || {}
+    const { title, format, pageCount, author, genre, description, level } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -279,6 +281,10 @@ router.patch('/books/:id', ...staff, async (req, res) => {
 
     if (genre !== undefined) {
       data.genre = normalizeOptionalText(genre)
+    }
+
+    if (description !== undefined) {
+      data.description = normalizeOptionalText(description)
     }
 
     if (level !== undefined) {
@@ -329,7 +335,7 @@ router.patch('/books/by-title/:title', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Title is required' })
     }
 
-    const { title, format, pageCount, author, genre, level } = req.body || {}
+    const { title, format, pageCount, author, genre, description, level } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -355,6 +361,10 @@ router.patch('/books/by-title/:title', ...staff, async (req, res) => {
 
     if (genre !== undefined) {
       data.genre = normalizeOptionalText(genre)
+    }
+
+    if (description !== undefined) {
+      data.description = normalizeOptionalText(description)
     }
 
     if (level !== undefined) {
