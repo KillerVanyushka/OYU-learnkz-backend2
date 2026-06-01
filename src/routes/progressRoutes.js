@@ -287,6 +287,15 @@ router.get('/not-started', requireAuth, async (req, res) => {
 // GET /api/progress/xp-stats
 router.get('/xp-stats', requireAuth, async (req, res) => {
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { xp: true },
+    })
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
     const rows = await prisma.userXpHistory.findMany({
       where: { userId: req.userId },
       select: {
@@ -321,7 +330,8 @@ router.get('/xp-stats', requireAuth, async (req, res) => {
       .filter((row) => new Date(row.createdAt) >= startOfWeek)
       .reduce((sum, row) => sum + (row.amount || 0), 0)
 
-    const allTimeXp = rows.reduce((sum, row) => sum + (row.amount || 0), 0)
+    const historyAllTimeXp = rows.reduce((sum, row) => sum + (row.amount || 0), 0)
+    const allTimeXp = Math.max(historyAllTimeXp, user.xp || 0)
 
     const dayTotals = Array.from(byDay.values())
     const bestDayXp = dayTotals.length ? Math.max(...dayTotals) : 0
@@ -355,6 +365,7 @@ router.get('/xp-stats', requireAuth, async (req, res) => {
       bestWeekXp,
       averagePerActiveDay,
       activeDays,
+      currentXp: user.xp || 0,
     })
   } catch (err) {
     console.error(err)
