@@ -37,6 +37,13 @@ app.get('/', (req, res) => {
   res.send('GOOOOOOOD JOOOOB')
 })
 
+app.get('/api/ping', (req, res) => {
+  res.json({
+    ok: true,
+    message: 'pong',
+  })
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 
