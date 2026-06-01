@@ -1,4 +1,8 @@
+DO $$ BEGIN
 CREATE TYPE "FriendRequestStatus" AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE "FriendRequest" (
   "id" SERIAL NOT NULL,
