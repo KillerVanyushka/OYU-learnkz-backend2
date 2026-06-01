@@ -284,4 +284,82 @@ router.get('/not-started', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/progress/xp-stats
+router.get('/xp-stats', requireAuth, async (req, res) => {
+  try {
+    const rows = await prisma.userXpHistory.findMany({
+      where: { userId: req.userId },
+      select: {
+        amount: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    const byDay = new Map()
+
+    for (const row of rows) {
+      const isoDay = new Date(row.createdAt).toISOString().slice(0, 10)
+      byDay.set(isoDay, (byDay.get(isoDay) || 0) + (row.amount || 0))
+    }
+
+    const now = new Date()
+    const startOfToday = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    ))
+
+    const dailyXp = rows
+      .filter((row) => new Date(row.createdAt) >= startOfToday)
+      .reduce((sum, row) => sum + (row.amount || 0), 0)
+
+    const startOfWeek = new Date(startOfToday)
+    startOfWeek.setUTCDate(startOfWeek.getUTCDate() - 6)
+
+    const weeklyXp = rows
+      .filter((row) => new Date(row.createdAt) >= startOfWeek)
+      .reduce((sum, row) => sum + (row.amount || 0), 0)
+
+    const allTimeXp = rows.reduce((sum, row) => sum + (row.amount || 0), 0)
+
+    const dayTotals = Array.from(byDay.values())
+    const bestDayXp = dayTotals.length ? Math.max(...dayTotals) : 0
+
+    const sortedDays = Array.from(byDay.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    )
+    let bestWeekXp = 0
+    for (let i = 0; i < sortedDays.length; i += 1) {
+      let windowSum = 0
+      for (let j = i; j < sortedDays.length; j += 1) {
+        const start = new Date(`${sortedDays[i][0]}T00:00:00.000Z`)
+        const end = new Date(`${sortedDays[j][0]}T00:00:00.000Z`)
+        const diffDays = Math.floor((end - start) / 86400000)
+        if (diffDays > 6) break
+        windowSum += sortedDays[j][1]
+      }
+      if (windowSum > bestWeekXp) bestWeekXp = windowSum
+    }
+
+    const activeDays = dayTotals.length
+    const averagePerActiveDay = activeDays
+      ? Math.round(allTimeXp / activeDays)
+      : 0
+
+    res.json({
+      dailyXp,
+      weeklyXp,
+      allTimeXp,
+      bestDayXp,
+      bestWeekXp,
+      averagePerActiveDay,
+      activeDays,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router
