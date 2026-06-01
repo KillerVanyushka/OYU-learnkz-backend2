@@ -26,6 +26,8 @@ const audioBooksRoutes = require('./routes/audioBooksRoutes')
 const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
 
 const alphabetGameRoutes=require('./routes/alphabetGame')
+const scenarioRoutes = require('./routes/scenarioRoutes');
+
 
 const app = express()
 
@@ -46,7 +48,7 @@ app.get('/api/ping', (req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
-
+app.use('/api/onboarding', scenarioRoutes);
 app.use('/api/admin', adminUserRoutes)
 app.use('/api/admin', adminLessonRoutes)
 app.use('/api/admin', uploadRoutes)
