@@ -11,6 +11,8 @@ const BOOK_SELECT = {
   format: true,
   pageCount: true,
   author: true,
+  genre: true,
+  level: true,
   fileUrl: true,
   mimeType: true,
   createdAt: true,
@@ -24,6 +26,23 @@ const FORMAT_TO_MIME = {
   txt: 'text/plain; charset=utf-8',
   doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+const LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+
+function normalizeOptionalText(value) {
+  if (value === undefined || value === null) return undefined
+  const normalized = String(value).trim()
+  return normalized || null
+}
+
+function normalizeLevel(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toUpperCase()
+  return LEVELS.includes(normalized) ? normalized : null
 }
 
 function normalizeFileNamePart(value) {
@@ -238,10 +257,17 @@ router.post('/', async (req, res) => {
       author,
       format,
       pageCount,
+      genre,
+      level,
       fileUrl,
       mimeType,
       fileKey,
     } = req.body
+
+    const normalizedLevel = normalizeLevel(level)
+    if (normalizedLevel === null) {
+      return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
+    }
 
     const book = await prisma.book.create({
       data: {
@@ -249,6 +275,8 @@ router.post('/', async (req, res) => {
         author,
         format,
         pageCount,
+        genre: normalizeOptionalText(genre),
+        level: normalizedLevel || 'A0',
         fileUrl,
         mimeType,
         fileKey,
@@ -277,10 +305,17 @@ router.put('/:id', async (req, res) => {
       author,
       format,
       pageCount,
+      genre,
+      level,
       fileUrl,
       mimeType,
       fileKey,
     } = req.body
+
+    const normalizedLevel = normalizeLevel(level)
+    if (normalizedLevel === null) {
+      return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
+    }
 
     const book = await prisma.book.update({
       where: { id },
@@ -289,6 +324,8 @@ router.put('/:id', async (req, res) => {
         author,
         format,
         pageCount,
+        genre: genre === undefined ? undefined : normalizeOptionalText(genre),
+        level: normalizedLevel,
         fileUrl,
         mimeType,
         fileKey,

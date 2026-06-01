@@ -10,6 +10,8 @@ const AUDIO_BOOK_SELECT = {
   title: true,
   format: true,
   author: true,
+  genre: true,
+  level: true,
   fileUrl: true,
   mimeType: true,
   createdAt: true,
@@ -23,6 +25,23 @@ const FORMAT_TO_MIME = {
   ogg: 'audio/ogg',
   flac: 'audio/flac',
   aac: 'audio/aac',
+}
+
+const LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+
+function normalizeOptionalText(value) {
+  if (value === undefined || value === null) return undefined
+  const normalized = String(value).trim()
+  return normalized || null
+}
+
+function normalizeLevel(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toUpperCase()
+  return LEVELS.includes(normalized) ? normalized : null
 }
 
 function normalizeFileNamePart(value) {

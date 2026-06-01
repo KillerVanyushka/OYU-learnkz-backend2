@@ -1,0 +1,7 @@
+ALTER TABLE "Book"
+ADD COLUMN "genre" TEXT,
+ADD COLUMN "level" "Level" NOT NULL DEFAULT 'A0';
+
+ALTER TABLE "AudioBook"
+ADD COLUMN "genre" TEXT,
+ADD COLUMN "level" "Level" NOT NULL DEFAULT 'A0';

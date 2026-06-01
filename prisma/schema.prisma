@@ -114,6 +114,8 @@ model Book {
   format    String
   pageCount Int
   author    String
+  genre     String?
+  level     Level    @default(A0)
   fileUrl   String   @db.Text
   fileKey   String   @unique
   mimeType  String?
@@ -129,6 +131,8 @@ model AudioBook {
   title     String   @unique
   format    String
   author    String
+  genre     String?
+  level     Level    @default(A0)
   fileUrl   String   @db.Text
   fileKey   String   @unique
   mimeType  String?

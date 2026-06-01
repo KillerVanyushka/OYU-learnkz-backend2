@@ -23,11 +23,30 @@ const AUDIO_BOOK_SELECT = {
   title: true,
   format: true,
   author: true,
+  genre: true,
+  level: true,
   fileUrl: true,
   fileKey: true,
   mimeType: true,
   createdAt: true,
   updatedAt: true,
+}
+
+const LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+
+function normalizeOptionalText(value) {
+  if (value === undefined || value === null) return undefined
+  const normalized = String(value).trim()
+  return normalized || null
+}
+
+function normalizeLevel(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined
+  }
+
+  const normalized = String(value).trim().toUpperCase()
+  return LEVELS.includes(normalized) ? normalized : null
 }
 
 function safeKeyName(str) {
@@ -139,7 +158,7 @@ router.get('/audio-books', requireAuth, async (req, res) => {
 
 router.post('/audio-books', ...staff, upload.single('file'), async (req, res) => {
   try {
-    const { title, format, author } = req.body || {}
+    const { title, format, author, genre, level } = req.body || {}
 
     if (!req.file) {
       return res.status(400).json({ message: 'file is required (field name: file)' })
@@ -161,9 +180,14 @@ router.post('/audio-books', ...staff, upload.single('file'), async (req, res) =>
     const normalizedAuthor = String(author).trim()
     const inferredFormat = resolveFileExtension(req.file)
     const normalizedFormat = String(format || inferredFormat).trim().toLowerCase()
+    const normalizedLevel = normalizeLevel(level)
 
     if (!normalizedFormat) {
       return res.status(400).json({ message: 'format is required' })
+    }
+
+    if (normalizedLevel === null) {
+      return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
     }
 
     const safeTitle = safeKeyName(normalizedTitle || 'audio-book')
@@ -192,6 +216,8 @@ router.post('/audio-books', ...staff, upload.single('file'), async (req, res) =>
         title: normalizedTitle,
         format: normalizedFormat,
         author: normalizedAuthor,
+        genre: normalizeOptionalText(genre),
+        level: normalizedLevel || 'A0',
         fileUrl,
         fileKey: key,
         mimeType: req.file.mimetype || null,
@@ -221,7 +247,7 @@ router.patch('/audio-books/:id', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid audio book id' })
     }
 
-    const { title, format, author } = req.body || {}
+    const { title, format, author, genre, level } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -243,6 +269,18 @@ router.patch('/audio-books/:id', ...staff, async (req, res) => {
         return res.status(400).json({ message: 'author cannot be empty' })
       }
       data.author = String(author).trim()
+    }
+
+    if (genre !== undefined) {
+      data.genre = normalizeOptionalText(genre)
+    }
+
+    if (level !== undefined) {
+      const normalizedLevel = normalizeLevel(level)
+      if (normalizedLevel === null) {
+        return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
+      }
+      data.level = normalizedLevel
     }
 
     const audioBook = await prisma.audioBook.update({
@@ -277,7 +315,7 @@ router.patch('/audio-books/by-title/:title', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Title is required' })
     }
 
-    const { title, format, author } = req.body || {}
+    const { title, format, author, genre, level } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -299,6 +337,18 @@ router.patch('/audio-books/by-title/:title', ...staff, async (req, res) => {
         return res.status(400).json({ message: 'author cannot be empty' })
       }
       data.author = String(author).trim()
+    }
+
+    if (genre !== undefined) {
+      data.genre = normalizeOptionalText(genre)
+    }
+
+    if (level !== undefined) {
+      const normalizedLevel = normalizeLevel(level)
+      if (normalizedLevel === null) {
+        return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
+      }
+      data.level = normalizedLevel
     }
 
     const audioBook = await prisma.audioBook.update({
