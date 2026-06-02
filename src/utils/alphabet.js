@@ -2,7 +2,7 @@ const fs = require("fs");
 const OpenAI = require("openai");
 
 // ⚠️ ВНИМАНИЕ: хранить ключ в коде небезопасно. Для реального проекта используйте переменные окружения.
-const CROSTHE = process.env.OPENAI_API_KEY;
+const CROSTHE = process.env.OPENROUTER_API_KEY;
 
 if (!CROSTHE) {
     throw new Error("API key is not set");
