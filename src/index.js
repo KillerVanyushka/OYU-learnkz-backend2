@@ -27,6 +27,7 @@ const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
 
 const alphabetGameRoutes=require('./routes/alphabetGame')
 const alphabetAudioRoutes = require('./routes/alphabetAudioRoutes')
+const speakingMLRoutes = require('./routes/speakingMLRoutes');
 
 
 
@@ -62,7 +63,7 @@ app.use('/api/chat', chatRoutes);
 
 app.use('/api/alphabet-game', alphabetGameRoutes)
 app.use('/api/alphabetAudio', alphabetAudioRoutes)
-
+app.use('/api/speaking-ml', speakingMLRoutes);
 app.use('/api/tasks', taskRoutes)
 app.use('/api/tasks', taskPublicRoutes)
 app.use('/api/tasks', taskAudioRoutes)
