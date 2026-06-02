@@ -109,7 +109,7 @@ async function findAudioBookByTitle(title) {
   })
 }
 
-async function streamAudioBookFile(audioBook, res) {
+async function streamAudioBookFile(audioBook, res, disposition = 'inline') {
   const key = audioBook.fileKey || extractKeyFromUrl(audioBook.fileUrl)
   if (!key) {
     return res.status(500).json({ message: 'Bad fileUrl format' })
@@ -132,9 +132,12 @@ async function streamAudioBookFile(audioBook, res) {
   }
   res.setHeader('Cache-Control', 'public, max-age=86400')
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  const mode = String(disposition || '').trim().toLowerCase() === 'attachment'
+    ? 'attachment'
+    : 'inline'
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
+    `${mode}; filename="${downloadName}"; filename*=UTF-8''${encodedName}`,
   )
   obj.Body.pipe(res)
 }
@@ -194,7 +197,7 @@ router.get('/by-title/:title/file', async (req, res) => {
       return res.status(404).json({ message: 'Audio book not found' })
     }
 
-    return streamAudioBookFile(audioBook, res)
+    return streamAudioBookFile(audioBook, res, req.query.disposition)
   } catch (err) {
     console.error('GET /api/audio-books/by-title/:title/file error:', err)
     res.status(500).json({ message: 'Failed to stream audio book file' })
@@ -241,7 +244,7 @@ router.get('/:id/file', async (req, res) => {
       return res.status(404).json({ message: 'Audio book not found' })
     }
 
-    return streamAudioBookFile(audioBook, res)
+    return streamAudioBookFile(audioBook, res, req.query.disposition)
   } catch (err) {
     console.error('GET /api/audio-books/:id/file error:', err)
     res.status(500).json({ message: 'Failed to stream audio book file' })
