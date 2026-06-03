@@ -1,0 +1,6 @@
+ALTER TABLE "AudioBook"
+ALTER COLUMN "fileUrl" DROP NOT NULL,
+ALTER COLUMN "fileKey" DROP NOT NULL;
+
+ALTER TABLE "AudioBook"
+ADD COLUMN "externalUrl" TEXT;

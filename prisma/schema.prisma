@@ -136,8 +136,9 @@ model AudioBook {
   author    String
   genre     String?
   level     Level    @default(A0)
-  fileUrl   String   @db.Text
-  fileKey   String   @unique
+  fileUrl   String?  @db.Text
+  fileKey   String?  @unique
+  externalUrl String? @db.Text
   mimeType  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

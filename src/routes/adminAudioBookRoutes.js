@@ -27,6 +27,7 @@ const AUDIO_BOOK_SELECT = {
   level: true,
   fileUrl: true,
   fileKey: true,
+  externalUrl: true,
   mimeType: true,
   createdAt: true,
   updatedAt: true,
@@ -158,11 +159,7 @@ router.get('/audio-books', requireAuth, async (req, res) => {
 
 router.post('/audio-books', ...staff, upload.single('file'), async (req, res) => {
   try {
-    const { title, format, author, genre, level } = req.body || {}
-
-    if (!req.file) {
-      return res.status(400).json({ message: 'file is required (field name: file)' })
-    }
+    const { title, format, author, genre, level, externalUrl } = req.body || {}
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ message: 'title is required' })
@@ -172,13 +169,17 @@ router.post('/audio-books', ...staff, upload.single('file'), async (req, res) =>
       return res.status(400).json({ message: 'author is required' })
     }
 
-    if (!process.env.R2_BUCKET) {
-      return res.status(500).json({ message: 'R2_BUCKET is not set' })
+    const normalizedExternalUrl = normalizeOptionalText(externalUrl)
+
+    if (!req.file && !normalizedExternalUrl) {
+      return res.status(400).json({
+        message: 'Either file or externalUrl is required',
+      })
     }
 
     const normalizedTitle = String(title).trim()
     const normalizedAuthor = String(author).trim()
-    const inferredFormat = resolveFileExtension(req.file)
+    const inferredFormat = req.file ? resolveFileExtension(req.file) : ''
     const normalizedFormat = String(format || inferredFormat).trim().toLowerCase()
     const normalizedLevel = normalizeLevel(level)
 
@@ -190,26 +191,37 @@ router.post('/audio-books', ...staff, upload.single('file'), async (req, res) =>
       return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
     }
 
-    const safeTitle = safeKeyName(normalizedTitle || 'audio-book')
-    const key = `audioBooks/${safeTitle}-${Date.now()}.${inferredFormat}`
+    let key = null
+    let fileUrl = null
+    let mimeType = null
 
-    await r2.send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype || 'application/octet-stream',
-      }),
-    )
+    if (req.file) {
+      if (!process.env.R2_BUCKET) {
+        return res.status(500).json({ message: 'R2_BUCKET is not set' })
+      }
 
-    await r2.send(
-      new HeadObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-      }),
-    )
+      const safeTitle = safeKeyName(normalizedTitle || 'audio-book')
+      key = `audioBooks/${safeTitle}-${Date.now()}.${inferredFormat}`
 
-    const fileUrl = publicUrlForKey(key)
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype || 'application/octet-stream',
+        }),
+      )
+
+      await r2.send(
+        new HeadObjectCommand({
+          Bucket: process.env.R2_BUCKET,
+          Key: key,
+        }),
+      )
+
+      fileUrl = publicUrlForKey(key)
+      mimeType = req.file.mimetype || null
+    }
 
     const audioBook = await prisma.audioBook.create({
       data: {
@@ -220,7 +232,8 @@ router.post('/audio-books', ...staff, upload.single('file'), async (req, res) =>
         level: normalizedLevel || 'A0',
         fileUrl,
         fileKey: key,
-        mimeType: req.file.mimetype || null,
+        externalUrl: normalizedExternalUrl,
+        mimeType,
       },
       select: AUDIO_BOOK_SELECT,
     })
@@ -247,7 +260,7 @@ router.patch('/audio-books/:id', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid audio book id' })
     }
 
-    const { title, format, author, genre, level } = req.body || {}
+    const { title, format, author, genre, level, externalUrl } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -281,6 +294,10 @@ router.patch('/audio-books/:id', ...staff, async (req, res) => {
         return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
       }
       data.level = normalizedLevel
+    }
+
+    if (externalUrl !== undefined) {
+      data.externalUrl = normalizeOptionalText(externalUrl)
     }
 
     const audioBook = await prisma.audioBook.update({
@@ -315,7 +332,7 @@ router.patch('/audio-books/by-title/:title', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Title is required' })
     }
 
-    const { title, format, author, genre, level } = req.body || {}
+    const { title, format, author, genre, level, externalUrl } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -349,6 +366,10 @@ router.patch('/audio-books/by-title/:title', ...staff, async (req, res) => {
         return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
       }
       data.level = normalizedLevel
+    }
+
+    if (externalUrl !== undefined) {
+      data.externalUrl = normalizeOptionalText(externalUrl)
     }
 
     const audioBook = await prisma.audioBook.update({
@@ -420,6 +441,7 @@ router.post('/audio-books/:id/file', ...staff, upload.single('file'), async (req
         format: inferredFormat,
         fileUrl: publicUrlForKey(key),
         fileKey: key,
+        externalUrl: null,
         mimeType: req.file.mimetype || null,
       },
       select: AUDIO_BOOK_SELECT,
@@ -485,6 +507,7 @@ router.post('/audio-books/by-title/:title/file', ...staff, upload.single('file')
         format: inferredFormat,
         fileUrl: publicUrlForKey(key),
         fileKey: key,
+        externalUrl: null,
         mimeType: req.file.mimetype || null,
       },
       select: AUDIO_BOOK_SELECT,

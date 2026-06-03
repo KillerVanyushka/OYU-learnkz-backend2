@@ -13,6 +13,7 @@ const AUDIO_BOOK_SELECT = {
   genre: true,
   level: true,
   fileUrl: true,
+  externalUrl: true,
   mimeType: true,
   createdAt: true,
   updatedAt: true,
@@ -110,9 +111,13 @@ async function findAudioBookByTitle(title) {
 }
 
 async function streamAudioBookFile(audioBook, res, disposition = 'inline') {
+  if (audioBook.externalUrl) {
+    return res.redirect(audioBook.externalUrl)
+  }
+
   const key = audioBook.fileKey || extractKeyFromUrl(audioBook.fileUrl)
   if (!key) {
-    return res.status(500).json({ message: 'Bad fileUrl format' })
+    return res.status(500).json({ message: 'Audio source is not configured correctly' })
   }
 
   const obj = await r2.send(
