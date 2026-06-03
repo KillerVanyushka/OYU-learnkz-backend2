@@ -75,6 +75,7 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
         promptText: true,
         optionsWords: true,
         correctWords: true,
+        audioUrl: true,
         xpReward: true,
         orderIndex: true,
       },
