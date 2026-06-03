@@ -23,8 +23,209 @@ const ONBOARDING_QUESTIONNAIRE = {
   preferredPaces: ['Лёгкий', 'Средний', 'Интенсивный'],
 }
 
+const INITIAL_INTERFACE_LANGUAGES = [
+  { code: 'ru', label: 'Русский' },
+  { code: 'en', label: 'English' },
+  { code: 'kz', label: 'Қазақша' },
+]
+
+const PLACEMENT_TEST_QUESTIONS = [
+  {
+    id: 1,
+    question: 'What does the word "Сәлем" mean?',
+    options: ['A) Goodbye', 'B) Hello', 'C) Thank you', 'D) Please'],
+    correctOption: 'B',
+  },
+  {
+    id: 2,
+    question: 'What does the word "Рахмет" mean?',
+    options: ['A) Please', 'B) Hello', 'C) Thank you', 'D) Sorry'],
+    correctOption: 'C',
+  },
+  {
+    id: 3,
+    question: 'What does the word "Кітап" mean?',
+    options: ['A) Pen', 'B) Book', 'C) Table', 'D) School'],
+    correctOption: 'B',
+  },
+  {
+    id: 4,
+    question: 'What does the sentence "Менің атым Айдана" mean?',
+    options: [
+      'A) I am a student',
+      'B) My name is Aidana',
+      'C) I live in Almaty',
+      'D) I am a teacher',
+    ],
+    correctOption: 'B',
+  },
+  {
+    id: 5,
+    question: 'Complete the sentence: "Мен ___ тұрамын."',
+    options: ['A) үйде', 'B) кітап', 'C) жақсы', 'D) бүгін'],
+    correctOption: 'A',
+  },
+  {
+    id: 6,
+    question: 'Which day of the week is a weekend?',
+    options: ['A) Дүйсенбі', 'B) Сейсенбі', 'C) Сенбі', 'D) Бейсенбі'],
+    correctOption: 'C',
+  },
+  {
+    id: 7,
+    question: 'What color is "Қызыл"?',
+    options: ['A) Red', 'B) Blue', 'C) Green', 'D) Black'],
+    correctOption: 'A',
+  },
+  {
+    id: 8,
+    question: 'Which sentence means "I am a student"?',
+    options: [
+      'A) Мен мұғаліммін',
+      'B) Мен студентпін',
+      'C) Ол студент',
+      'D) Біз студентпіз',
+    ],
+    correctOption: 'B',
+  },
+  {
+    id: 9,
+    question: 'What is the plural form of "Үй" (house)?',
+    options: ['A) Үйлер', 'B) Үйлар', 'C) Үйтар', 'D) Үйдерлер'],
+    correctOption: 'A',
+  },
+  {
+    id: 10,
+    question: 'Choose the correct ending: "Мен мектеп___ барамын."',
+    options: ['A) -ке', 'B) -де', 'C) -ден', 'D) -мен'],
+    correctOption: 'A',
+  },
+  {
+    id: 11,
+    question: 'What does the sentence "Ол кітап оқып отыр" mean?',
+    options: [
+      'A) He is reading a book',
+      'B) He is writing a book',
+      'C) He is buying a book',
+      'D) He is giving a book',
+    ],
+    correctOption: 'A',
+  },
+  {
+    id: 12,
+    question: 'How would you answer the question "Сен қайда тұрасың?"',
+    options: [
+      'A) Мен кітап оқимын',
+      'B) Мен Алматыда тұрамын',
+      'C) Мен 20 жастамын',
+      'D) Мен студентпін',
+    ],
+    correctOption: 'B',
+  },
+  {
+    id: 13,
+    question: 'Choose the correct sentence:',
+    options: [
+      'A) Мен қазақша сөйлеймін',
+      'B) Қазақша мен сөйлеймін',
+      'C) Сөйлеймін қазақша мен',
+      'D) Қазақша сөйлеймін мен',
+    ],
+    correctOption: 'A',
+  },
+  {
+    id: 14,
+    question: 'What does the word "Кеше" mean?',
+    options: ['A) Today', 'B) Tomorrow', 'C) Yesterday', 'D) Now'],
+    correctOption: 'C',
+  },
+  {
+    id: 15,
+    question: 'Choose the grammatically correct sentence:',
+    options: [
+      'A) Мен киноға барамын',
+      'B) Мен киноға барады',
+      'C) Мен киноға барасың',
+      'D) Мен киноға барамыз',
+    ],
+    correctOption: 'A',
+  },
+  {
+    id: 16,
+    question:
+      '"Айбек күн сайын қазақ тілін үйренеді. Ол жаңа сөздерді жаттайды." What does Aibek do?',
+    options: [
+      'A) He plays sports',
+      'B) He learns Kazakh',
+      'C) He sells books',
+      'D) He travels',
+    ],
+    correctOption: 'B',
+  },
+  {
+    id: 17,
+    question: 'What does the sentence "Егер уақыт болса, мен кітап оқимын" mean?',
+    options: [
+      "A) I don't have time",
+      'B) If I have time, I will read a book',
+      'C) I already read a book',
+      'D) I bought a book',
+    ],
+    correctOption: 'B',
+  },
+  {
+    id: 18,
+    question: 'Complete the sentence: "Мен университетке бардым, себебі..."',
+    options: ['A) сабақ болды', 'B) кітап', 'C) кеше', 'D) үлкен'],
+    correctOption: 'A',
+  },
+  {
+    id: 19,
+    question:
+      '"Қазақстан — Орталық Азиядағы мемлекет. Оның астанасы — Астана." What is the capital city of Kazakhstan?',
+    options: ['A) Almaty', 'B) Shymkent', 'C) Astana', 'D) Karaganda'],
+    correctOption: 'C',
+  },
+  {
+    id: 20,
+    question: 'Complete the sentence: "Қазақ тілін үйрену маңызды, өйткені..."',
+    options: [
+      'A) ол Қазақстанның мемлекеттік тілі',
+      'B) ол спорт түрі',
+      'C) ол қала',
+      'D) ол тағам',
+    ],
+    correctOption: 'A',
+  },
+]
+
 function normalizeTextAnswer(value) {
   return String(value || '').trim()
+}
+
+function toLangEnum(code) {
+  const normalized = String(code || '').trim().toLowerCase()
+
+  if (normalized === 'ru') return 'RU'
+  if (normalized === 'en') return 'EN'
+  if (normalized === 'kz') return 'KZ'
+
+  return null
+}
+
+function fromLangEnum(value) {
+  if (value === 'RU') return 'ru'
+  if (value === 'EN') return 'en'
+  if (value === 'KZ') return 'kz'
+
+  return null
+}
+
+function resolvePlacementLevel(score) {
+  if (score >= 16) return 'B1'
+  if (score >= 11) return 'A2'
+  if (score >= 6) return 'A1'
+  return 'A0'
 }
 
 function validateOnboardingPayload(body) {
@@ -125,6 +326,8 @@ router.get('/me', requireAuth, async (req, res) => {
         username: true,
         email: true,
         level: true,
+        interfaceLanguage: true,
+        initialSetupCompleted: true,
         role: true,
         streakCount: true,
         streakLastDay: true,
@@ -141,6 +344,179 @@ router.get('/me', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.get('/onboarding/status', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        level: true,
+        interfaceLanguage: true,
+        initialSetupCompleted: true,
+      },
+    })
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    const interfaceLanguage = fromLangEnum(user.interfaceLanguage)
+
+    return res.json({
+      interfaceLanguage,
+      level: user.level,
+      initialSetupCompleted: user.initialSetupCompleted,
+      needsLanguageSelection: !interfaceLanguage,
+      needsLevelSelection: !user.initialSetupCompleted,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.get('/onboarding/languages', requireAuth, async (req, res) => {
+  return res.json({ languages: INITIAL_INTERFACE_LANGUAGES })
+})
+
+router.post('/onboarding/language', requireAuth, async (req, res) => {
+  try {
+    const interfaceLanguage = toLangEnum(req.body?.language)
+
+    if (!interfaceLanguage) {
+      return res.status(400).json({ message: 'language must be one of: ru, en, kz' })
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: { interfaceLanguage },
+      select: {
+        id: true,
+        interfaceLanguage: true,
+        level: true,
+        initialSetupCompleted: true,
+      },
+    })
+
+    return res.json({
+      message: 'Interface language saved',
+      interfaceLanguage: fromLangEnum(user.interfaceLanguage),
+      level: user.level,
+      initialSetupCompleted: user.initialSetupCompleted,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.get('/onboarding/placement-test', requireAuth, async (req, res) => {
+  return res.json({
+    questions: PLACEMENT_TEST_QUESTIONS.map((question) => ({
+      id: question.id,
+      question: question.question,
+      options: question.options,
+    })),
+  })
+})
+
+router.post('/onboarding/start-from-zero', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        level: 'A0',
+        initialSetupCompleted: true,
+      },
+      select: {
+        id: true,
+        level: true,
+        interfaceLanguage: true,
+        initialSetupCompleted: true,
+      },
+    })
+
+    return res.json({
+      message: 'User level set to A0',
+      level: user.level,
+      interfaceLanguage: fromLangEnum(user.interfaceLanguage),
+      initialSetupCompleted: user.initialSetupCompleted,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+router.post('/onboarding/placement-test', requireAuth, async (req, res) => {
+  try {
+    const answers = Array.isArray(req.body?.answers) ? req.body.answers : null
+
+    if (!answers || answers.length !== PLACEMENT_TEST_QUESTIONS.length) {
+      return res.status(400).json({
+        message: `answers must contain exactly ${PLACEMENT_TEST_QUESTIONS.length} items`,
+      })
+    }
+
+    const answerMap = new Map()
+
+    for (const rawAnswer of answers) {
+      const questionId = Number(rawAnswer?.questionId)
+      const selectedOption = String(rawAnswer?.selectedOption || '')
+        .trim()
+        .toUpperCase()
+
+      if (!Number.isInteger(questionId) || !['A', 'B', 'C', 'D'].includes(selectedOption)) {
+        return res.status(400).json({
+          message: 'Each answer must include a valid questionId and selectedOption (A-D)',
+        })
+      }
+
+      answerMap.set(questionId, selectedOption)
+    }
+
+    if (answerMap.size !== PLACEMENT_TEST_QUESTIONS.length) {
+      return res.status(400).json({ message: 'answers must contain unique questionIds' })
+    }
+
+    let score = 0
+
+    for (const question of PLACEMENT_TEST_QUESTIONS) {
+      if (answerMap.get(question.id) === question.correctOption) {
+        score += 1
+      }
+    }
+
+    const level = resolvePlacementLevel(score)
+
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        level,
+        initialSetupCompleted: true,
+      },
+      select: {
+        id: true,
+        level: true,
+        interfaceLanguage: true,
+        initialSetupCompleted: true,
+      },
+    })
+
+    return res.json({
+      message: 'Placement test submitted successfully',
+      score,
+      totalQuestions: PLACEMENT_TEST_QUESTIONS.length,
+      level: user.level,
+      interfaceLanguage: fromLangEnum(user.interfaceLanguage),
+      initialSetupCompleted: user.initialSetupCompleted,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
   }
 })
 

@@ -14,6 +14,8 @@ model User {
   createdAt              DateTime      @default(now())
   role                   Role          @default(USER)
   level                  Level         @default(A0)
+  interfaceLanguage      Lang?
+  initialSetupCompleted  Boolean       @default(false)
   updatedAt              DateTime?     @updatedAt
   streakCount            Int           @default(0)
   streakLastDay          String?
