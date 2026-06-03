@@ -1,5 +1,8 @@
 const router = require('express').Router()
+const multer = require('multer')
+const { PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3')
 const prisma = require('../utils/prisma')
+const r2 = require('../utils/r2')
 const requireAuth = require('../middlewares/requireAuth')
 const requireRole = require('../middlewares/requireRole')
 const { normalizeMatchPairs } = require('../utils/taskMatching')
@@ -9,6 +12,10 @@ const staff = [requireAuth, requireRole('ADMIN', 'MODERATOR')]
 const ALLOWED_LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 const ALLOWED_TASK_TYPES = ['SENTENCE_BUILD', 'AUDIO_DICTATION', 'AUDIO_TRANSLATE', 'WORD_MATCH']
 const ALLOWED_LANGS = ['KZ', 'RU', 'EN']
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+})
 
 function normalizeLevel(level) {
   const value = String(level || '').trim().toUpperCase()
@@ -24,6 +31,88 @@ function normalizeLang(lang) {
   const value = String(lang || '').trim().toUpperCase()
   return ALLOWED_LANGS.includes(value) ? value : null
 }
+
+function safeKeyName(str) {
+  return String(str || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_.]/g, '')
+}
+
+function publicUrlForKey(key) {
+  const publicBase = process.env.R2_PUBLIC_BASE_URL
+  const endpoint = process.env.R2_ENDPOINT
+  const bucket = process.env.R2_BUCKET
+
+  if (publicBase) {
+    return `${publicBase.replace(/\/$/, '')}/${key}`
+  }
+
+  if (endpoint && bucket) {
+    return `${endpoint.replace(/\/$/, '')}/${bucket}/${key}`
+  }
+
+  throw new Error('R2 public URL is not configured')
+}
+
+function resolveAudioExtension(file) {
+  const original = String(file?.originalname || '').toLowerCase()
+  const ext = original.includes('.') ? original.split('.').pop() : ''
+  if (ext) return ext
+
+  const mime = String(file?.mimetype || '').toLowerCase()
+  if (mime === 'audio/mpeg') return 'mp3'
+  if (mime === 'audio/mp4' || mime === 'audio/x-m4a') return 'm4a'
+  if (mime === 'audio/wav' || mime === 'audio/x-wav') return 'wav'
+  if (mime === 'audio/ogg') return 'ogg'
+  if (mime === 'audio/flac') return 'flac'
+  if (mime === 'audio/aac') return 'aac'
+
+  return 'bin'
+}
+
+router.post('/tasks/audio-upload', ...staff, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'file is required (field name: file)' })
+    }
+
+    if (!process.env.R2_BUCKET) {
+      return res.status(500).json({ message: 'R2_BUCKET is not set' })
+    }
+
+    const baseName = safeKeyName(req.body?.title || req.file.originalname || 'task-audio')
+    const ext = resolveAudioExtension(req.file)
+    const key = `taskAudio/${baseName}-${Date.now()}.${ext}`
+
+    await r2.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype || 'application/octet-stream',
+      }),
+    )
+
+    await r2.send(
+      new HeadObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: key,
+      }),
+    )
+
+    return res.status(201).json({
+      message: 'Audio uploaded successfully',
+      audioUrl: publicUrlForKey(key),
+      mimeType: req.file.mimetype || null,
+      format: ext,
+    })
+  } catch (err) {
+    console.error('POST /api/admin/tasks/audio-upload error:', err)
+    return res.status(500).json({ message: 'Audio upload failed' })
+  }
+})
 
 // GET /api/admin/lessons
 router.get('/lessons', requireAuth, async (req, res) => {
