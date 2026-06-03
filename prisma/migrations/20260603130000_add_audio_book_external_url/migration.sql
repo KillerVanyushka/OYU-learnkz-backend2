@@ -4,3 +4,4 @@ ALTER COLUMN "fileKey" DROP NOT NULL;
 
 ALTER TABLE "AudioBook"
 ADD COLUMN IF NOT EXISTS "externalUrl" TEXT;
+
