@@ -29,6 +29,7 @@ const BOOK_SELECT = {
   level: true,
   fileUrl: true,
   fileKey: true,
+  externalUrl: true,
   mimeType: true,
   createdAt: true,
   updatedAt: true,
@@ -159,11 +160,7 @@ router.get('/books', requireAuth, async (req, res) => {
 
 router.post('/books', ...staff, upload.single('file'), async (req, res) => {
   try {
-    const { title, format, pageCount, author, genre, description, level } = req.body || {}
-
-    if (!req.file) {
-      return res.status(400).json({ message: 'file is required (field name: file)' })
-    }
+    const { title, format, pageCount, author, genre, description, level, externalUrl } = req.body || {}
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ message: 'title is required' })
@@ -178,13 +175,17 @@ router.post('/books', ...staff, upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: 'pageCount must be a positive integer' })
     }
 
-    if (!process.env.R2_BUCKET) {
-      return res.status(500).json({ message: 'R2_BUCKET is not set' })
+    const normalizedExternalUrl = normalizeOptionalText(externalUrl)
+
+    if (!req.file && !normalizedExternalUrl) {
+      return res.status(400).json({
+        message: 'Either file or externalUrl is required',
+      })
     }
 
     const normalizedTitle = String(title).trim()
     const normalizedAuthor = String(author).trim()
-    const inferredFormat = resolveFileExtension(req.file)
+    const inferredFormat = req.file ? resolveFileExtension(req.file) : ''
     const normalizedFormat = String(format || inferredFormat).trim().toLowerCase()
     const normalizedLevel = normalizeLevel(level)
 
@@ -196,26 +197,37 @@ router.post('/books', ...staff, upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: `level must be one of: ${LEVELS.join(', ')}` })
     }
 
-    const safeTitle = safeKeyName(normalizedTitle || 'book')
-    const key = `books/${safeTitle}-${Date.now()}.${inferredFormat}`
+    let key = null
+    let fileUrl = null
+    let mimeType = null
 
-    await r2.send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype || 'application/octet-stream',
-      }),
-    )
+    if (req.file) {
+      if (!process.env.R2_BUCKET) {
+        return res.status(500).json({ message: 'R2_BUCKET is not set' })
+      }
 
-    await r2.send(
-      new HeadObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-      }),
-    )
+      const safeTitle = safeKeyName(normalizedTitle || 'book')
+      key = `books/${safeTitle}-${Date.now()}.${inferredFormat}`
 
-    const fileUrl = publicUrlForKey(key)
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype || 'application/octet-stream',
+        }),
+      )
+
+      await r2.send(
+        new HeadObjectCommand({
+          Bucket: process.env.R2_BUCKET,
+          Key: key,
+        }),
+      )
+
+      fileUrl = publicUrlForKey(key)
+      mimeType = req.file.mimetype || null
+    }
 
     const book = await prisma.book.create({
       data: {
@@ -228,7 +240,8 @@ router.post('/books', ...staff, upload.single('file'), async (req, res) => {
         level: normalizedLevel || 'A0',
         fileUrl,
         fileKey: key,
-        mimeType: req.file.mimetype || null,
+        externalUrl: normalizedExternalUrl,
+        mimeType,
       },
       select: BOOK_SELECT,
     })
@@ -255,7 +268,7 @@ router.patch('/books/:id', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Invalid book id' })
     }
 
-    const { title, format, pageCount, author, genre, description, level } = req.body || {}
+    const { title, format, pageCount, author, genre, description, level, externalUrl } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -301,6 +314,10 @@ router.patch('/books/:id', ...staff, async (req, res) => {
         return res.status(400).json({ message: 'pageCount must be a positive integer' })
       }
       data.pageCount = parsedPageCount
+    }
+
+    if (externalUrl !== undefined) {
+      data.externalUrl = normalizeOptionalText(externalUrl)
     }
 
     const book = await prisma.book.update({
@@ -335,7 +352,7 @@ router.patch('/books/by-title/:title', ...staff, async (req, res) => {
       return res.status(400).json({ message: 'Title is required' })
     }
 
-    const { title, format, pageCount, author, genre, description, level } = req.body || {}
+    const { title, format, pageCount, author, genre, description, level, externalUrl } = req.body || {}
     const data = {}
 
     if (title !== undefined) {
@@ -381,6 +398,10 @@ router.patch('/books/by-title/:title', ...staff, async (req, res) => {
         return res.status(400).json({ message: 'pageCount must be a positive integer' })
       }
       data.pageCount = parsedPageCount
+    }
+
+    if (externalUrl !== undefined) {
+      data.externalUrl = normalizeOptionalText(externalUrl)
     }
 
     const book = await prisma.book.update({
@@ -452,6 +473,7 @@ router.post('/books/:id/file', ...staff, upload.single('file'), async (req, res)
         format: inferredFormat,
         fileUrl: publicUrlForKey(key),
         fileKey: key,
+        externalUrl: null,
         mimeType: req.file.mimetype || null,
       },
       select: BOOK_SELECT,
@@ -517,6 +539,7 @@ router.post('/books/by-title/:title/file', ...staff, upload.single('file'), asyn
         format: inferredFormat,
         fileUrl: publicUrlForKey(key),
         fileKey: key,
+        externalUrl: null,
         mimeType: req.file.mimetype || null,
       },
       select: BOOK_SELECT,

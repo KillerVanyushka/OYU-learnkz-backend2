@@ -15,6 +15,7 @@ const BOOK_SELECT = {
   description: true,
   level: true,
   fileUrl: true,
+  externalUrl: true,
   mimeType: true,
   createdAt: true,
   updatedAt: true,
@@ -112,9 +113,13 @@ async function findBookByTitle(title) {
 }
 
 async function streamBookFile(book, res, disposition = 'attachment') {
+  if (book.externalUrl) {
+    return res.redirect(book.externalUrl)
+  }
+
   const key = book.fileKey || extractKeyFromUrl(book.fileUrl)
   if (!key) {
-    return res.status(500).json({ message: 'Bad fileUrl format' })
+    return res.status(500).json({ message: 'Book source is not configured correctly' })
   }
 
   const obj = await r2.send(
@@ -265,6 +270,7 @@ router.post('/', async (req, res) => {
       description,
       level,
       fileUrl,
+      externalUrl,
       mimeType,
       fileKey,
     } = req.body
@@ -284,6 +290,7 @@ router.post('/', async (req, res) => {
         description: normalizeOptionalText(description),
         level: normalizedLevel || 'A0',
         fileUrl,
+        externalUrl: normalizeOptionalText(externalUrl),
         mimeType,
         fileKey,
       },
@@ -315,6 +322,7 @@ router.put('/:id', async (req, res) => {
       description,
       level,
       fileUrl,
+      externalUrl,
       mimeType,
       fileKey,
     } = req.body
@@ -336,6 +344,7 @@ router.put('/:id', async (req, res) => {
           description === undefined ? undefined : normalizeOptionalText(description),
         level: normalizedLevel,
         fileUrl,
+        externalUrl: externalUrl === undefined ? undefined : normalizeOptionalText(externalUrl),
         mimeType,
         fileKey,
       },
