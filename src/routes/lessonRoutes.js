@@ -82,15 +82,30 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
       orderBy: [{ orderIndex: 'asc' }, { id: 'asc' }],
     })
 
+    const attempts = await prisma.taskAttempt.findMany({
+      where: {
+        userId: req.userId,
+        isCorrect: true,
+        task: { lessonId, isArchived: false },
+      },
+      select: { taskId: true },
+    })
+
+    const completedTaskIds = new Set(attempts.map((attempt) => attempt.taskId))
+
     const serializedTasks = tasks.map((task) => {
       if (task.type !== 'WORD_MATCH') {
-        return task
+        return {
+          ...task,
+          isCompleted: completedTaskIds.has(task.id),
+        }
       }
 
       const matchingOptions = buildMatchingOptions(task.optionsWords)
 
       return {
         ...task,
+        isCompleted: completedTaskIds.has(task.id),
         optionsWords: undefined,
         correctWords: undefined,
         matchingOptions,
