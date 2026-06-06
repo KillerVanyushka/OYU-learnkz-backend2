@@ -801,6 +801,111 @@ router.get('/dictionary', requireAuth, async (req, res) => {
   }
 })
 
+// PATCH /api/user/dictionary/:id
+router.patch('/dictionary/:id', requireAuth, async (req, res) => {
+  try {
+    const entryId = Number(req.params.id)
+    if (Number.isNaN(entryId)) {
+      return res.status(400).json({ message: 'Invalid dictionary entry id' })
+    }
+
+    const existingEntry = await prisma.userDictionaryEntry.findFirst({
+      where: {
+        id: entryId,
+        userId: req.userId,
+      },
+      select: { id: true },
+    })
+
+    if (!existingEntry) {
+      return res.status(404).json({ message: 'Dictionary entry not found' })
+    }
+
+    const { word, translationEn, translationRu, description } = req.body || {}
+    const data = {}
+
+    if (word !== undefined) {
+      const normalizedWord = String(word).trim()
+      if (!normalizedWord) {
+        return res.status(400).json({ message: 'word cannot be empty' })
+      }
+      data.word = normalizedWord
+    }
+
+    if (translationEn !== undefined) {
+      data.translationEn =
+        translationEn === null ? null : String(translationEn).trim()
+    }
+
+    if (translationRu !== undefined) {
+      data.translationRu =
+        translationRu === null ? null : String(translationRu).trim()
+    }
+
+    if (description !== undefined) {
+      data.description = description === null ? null : String(description).trim()
+    }
+
+    const entry = await prisma.userDictionaryEntry.update({
+      where: { id: entryId },
+      data,
+      select: {
+        id: true,
+        word: true,
+        translationEn: true,
+        translationRu: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    return res.json({
+      message: 'Dictionary entry updated',
+      entry,
+    })
+  } catch (err) {
+    console.error(err)
+    if (err.code === 'P2002') {
+      return res
+        .status(409)
+        .json({ message: 'This word is already in your dictionary' })
+    }
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// DELETE /api/user/dictionary/:id
+router.delete('/dictionary/:id', requireAuth, async (req, res) => {
+  try {
+    const entryId = Number(req.params.id)
+    if (Number.isNaN(entryId)) {
+      return res.status(400).json({ message: 'Invalid dictionary entry id' })
+    }
+
+    const existingEntry = await prisma.userDictionaryEntry.findFirst({
+      where: {
+        id: entryId,
+        userId: req.userId,
+      },
+      select: { id: true },
+    })
+
+    if (!existingEntry) {
+      return res.status(404).json({ message: 'Dictionary entry not found' })
+    }
+
+    await prisma.userDictionaryEntry.delete({
+      where: { id: entryId },
+    })
+
+    return res.json({ message: 'Dictionary entry deleted' })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // ------------------------------
 // FRIEND REQUESTS / FRIENDS
 // ------------------------------
