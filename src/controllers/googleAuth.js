@@ -20,12 +20,50 @@ async function generateUniqueNickname() {
   throw new Error('Failed to generate unique nickname')
 }
 
+async function getGoogleProfile({ idToken, accessToken }) {
+  if (idToken) {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    })
+
+    const payload = ticket.getPayload()
+    return {
+      email: payload?.email?.trim().toLowerCase(),
+      name: payload?.name?.trim(),
+    }
+  }
+
+  if (accessToken) {
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Google userinfo request failed with status ${response.status}`)
+    }
+
+    const payload = await response.json()
+    return {
+      email: payload?.email?.trim().toLowerCase(),
+      name: payload?.name?.trim(),
+    }
+  }
+
+  return {
+    email: null,
+    name: null,
+  }
+}
+
 exports.googleLogin = async (req, res) => {
   try {
-    const { idToken } = req.body || {}
+    const { idToken, accessToken } = req.body || {}
 
-    if (!idToken) {
-      return res.status(400).json({ message: 'idToken is required' })
+    if (!idToken && !accessToken) {
+      return res.status(400).json({ message: 'idToken or accessToken is required' })
     }
 
     if (!process.env.GOOGLE_CLIENT_ID) {
@@ -36,14 +74,9 @@ exports.googleLogin = async (req, res) => {
       return res.status(500).json({ message: 'JWT_SECRET is not configured' })
     }
 
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    })
-
-    const payload = ticket.getPayload()
-    const email = payload?.email?.trim().toLowerCase()
-    const name = payload?.name?.trim()
+    const profile = await getGoogleProfile({ idToken, accessToken })
+    const email = profile.email
+    const name = profile.name
 
     if (!email) {
       return res.status(400).json({ message: 'Google account email was not provided' })
