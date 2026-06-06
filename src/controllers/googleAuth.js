@@ -5,55 +5,101 @@ const crypto = require('crypto')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
+async function generateUniqueNickname() {
+  for (let i = 0; i < 10; i++) {
+    const nickname = `user${Math.floor(100000000 + Math.random() * 900000000)}`
+
+    const exists = await prisma.user.findUnique({
+      where: { nickname },
+      select: { id: true },
+    })
+
+    if (!exists) return nickname
+  }
+
+  throw new Error('Failed to generate unique nickname')
+}
+
 exports.googleLogin = async (req, res) => {
-    try {
-        const { idToken } = req.body
-        if (!idToken) return res.status(400).json({ message: 'idToken обязателен' })
+  try {
+    const { idToken } = req.body || {}
 
-        // проверяем токен у Google
-        const ticket = await client.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        })
-        const payload = ticket.getPayload()
-        const { email, name } = payload
-
-        // проверяем есть ли пользователь
-        let user = await prisma.user.findUnique({ where: { email } })
-
-        if (!user) {
-            // создаём нового пользователя
-            user = await prisma.user.create({
-                data: {
-                    email,
-                    username: name,
-                    password: crypto.randomBytes(16).toString('hex'), // случайный пароль
-                    role: 'USER',
-                },
-            })
-        }
-
-        // создаём JWT
-        const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' }
-        )
-
-        res.json({
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-                level: user.level,
-                xp: user.xp,
-                createdAt: user.createdAt,
-            },
-        })
-    } catch (err) {
-        console.error(err)
-        res.status(500).json({ message: 'Server error' })
+    if (!idToken) {
+      return res.status(400).json({ message: 'idToken is required' })
     }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ message: 'GOOGLE_CLIENT_ID is not configured' })
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'JWT_SECRET is not configured' })
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    })
+
+    const payload = ticket.getPayload()
+    const email = payload?.email?.trim().toLowerCase()
+    const name = payload?.name?.trim()
+
+    if (!email) {
+      return res.status(400).json({ message: 'Google account email was not provided' })
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (!user) {
+      const nickname = await generateUniqueNickname()
+
+      user = await prisma.user.create({
+        data: {
+          email,
+          username: name || email.split('@')[0] || 'User',
+          nickname,
+          password: crypto.randomBytes(16).toString('hex'),
+          role: 'USER',
+          emailConfirmed: true,
+          emailConfirmationToken: null,
+        },
+      })
+    } else if (!user.emailConfirmed) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailConfirmed: true,
+          emailConfirmationToken: null,
+        },
+      })
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    )
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        interfaceLanguage: user.interfaceLanguage,
+        initialSetupCompleted: user.initialSetupCompleted,
+        xp: user.xp,
+        createdAt: user.createdAt,
+      },
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
 }

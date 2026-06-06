@@ -10,6 +10,7 @@ router.post('/forgot-password', authController.forgotPassword)
 router.post('/reset-password', authController.resetPassword)
 
 // Google login
+router.post('/google', googleAuth.googleLogin)
 router.post('/google-login', googleAuth.googleLogin)
 
 module.exports = router
