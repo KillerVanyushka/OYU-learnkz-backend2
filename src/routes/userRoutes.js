@@ -1295,6 +1295,48 @@ router.get('/friends', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/user/friend-suggestions
+router.get('/friend-suggestions', requireAuth, async (req, res) => {
+  try {
+    const limitRaw = Number.parseInt(req.query.limit, 10)
+    const limit = Number.isFinite(limitRaw)
+      ? Math.min(Math.max(limitRaw, 1), 20)
+      : 8
+
+    const relations = await prisma.friendRequest.findMany({
+      where: {
+        OR: [{ senderId: req.userId }, { receiverId: req.userId }],
+      },
+      select: {
+        senderId: true,
+        receiverId: true,
+      },
+    })
+
+    const excludedIds = new Set([req.userId])
+    for (const relation of relations) {
+      excludedIds.add(relation.senderId)
+      excludedIds.add(relation.receiverId)
+    }
+
+    const suggestions = await prisma.user.findMany({
+      where: {
+        id: {
+          notIn: [...excludedIds],
+        },
+      },
+      orderBy: [{ xp: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      take: limit,
+      select: userPreviewSelect,
+    })
+
+    return res.json(suggestions)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // GET /api/user/:id/friend-status
 router.get('/:id/friend-status', requireAuth, async (req, res) => {
   try {
