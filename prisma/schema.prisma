@@ -37,6 +37,21 @@ model User {
   onboardingAnswers      UserOnboardingAnswer?
 }
 
+model DictionaryWord {
+  id            Int                   @id @default(autoincrement())
+  word          String
+  normalizedWord String              @unique
+  translationEn String?
+  translationRu String?
+  transcription String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  userEntries   UserDictionaryEntry[]
+
+  @@index([word])
+  @@index([normalizedWord])
+}
+
 model Lesson {
   id          Int        @id @default(autoincrement())
   title       String
@@ -149,18 +164,23 @@ model AudioBook {
 }
 
 model UserDictionaryEntry {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  word          String
-  translationEn String?
-  translationRu String?
-  description   String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             Int             @id @default(autoincrement())
+  userId         Int
+  dictionaryWordId Int?
+  word           String
+  normalizedWord String
+  translationEn  String?
+  translationRu  String?
+  transcription  String?
+  description    String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dictionaryWord DictionaryWord? @relation(fields: [dictionaryWordId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, word])
+  @@unique([userId, normalizedWord])
   @@index([userId, createdAt])
+  @@index([dictionaryWordId])
 }
 
 model UserOnboardingAnswer {

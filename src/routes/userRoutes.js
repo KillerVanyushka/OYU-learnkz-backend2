@@ -2,6 +2,13 @@ const router = require('express').Router()
 const prisma = require('../utils/prisma')
 const requireAuth = require('../middlewares/requireAuth')
 
+function normalizeDictionaryWord(raw) {
+  return String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
 const ONBOARDING_QUESTIONNAIRE = {
   goals: [
     'Учёба',
@@ -728,24 +735,59 @@ router.post('/onboarding/answers', requireAuth, async (req, res) => {
 // POST /api/user/dictionary
 router.post('/dictionary', requireAuth, async (req, res) => {
   try {
-    const { word, translationEn, translationRu, description } = req.body || {}
+    const { word, description } = req.body || {}
 
     if (!word || !String(word).trim()) {
       return res.status(400).json({ message: 'word is required' })
     }
 
+    const normalizedWord = normalizeDictionaryWord(word)
+
+    const existingEntry = await prisma.userDictionaryEntry.findFirst({
+      where: {
+        userId: req.userId,
+        normalizedWord,
+      },
+      select: {
+        id: true,
+        word: true,
+        translationEn: true,
+        translationRu: true,
+        transcription: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    if (existingEntry) {
+      return res.status(200).json({
+        message: 'This word is already in your dictionary',
+        entry: existingEntry,
+        alreadySaved: true,
+      })
+    }
+
+    const dictionaryWord = await prisma.dictionaryWord.findUnique({
+      where: { normalizedWord },
+      select: {
+        id: true,
+        word: true,
+        translationEn: true,
+        translationRu: true,
+        transcription: true,
+      },
+    })
+
     const entry = await prisma.userDictionaryEntry.create({
       data: {
         userId: req.userId,
-        word: String(word).trim(),
-        translationEn:
-          translationEn === undefined || translationEn === null
-            ? null
-            : String(translationEn).trim(),
-        translationRu:
-          translationRu === undefined || translationRu === null
-            ? null
-            : String(translationRu).trim(),
+        dictionaryWordId: dictionaryWord?.id ?? null,
+        word: dictionaryWord?.word ?? String(word).trim(),
+        normalizedWord,
+        translationEn: dictionaryWord?.translationEn ?? null,
+        translationRu: dictionaryWord?.translationRu ?? null,
+        transcription: dictionaryWord?.transcription ?? null,
         description:
           description === undefined || description === null
             ? null
@@ -756,6 +798,7 @@ router.post('/dictionary', requireAuth, async (req, res) => {
         word: true,
         translationEn: true,
         translationRu: true,
+        transcription: true,
         description: true,
         createdAt: true,
         updatedAt: true,
@@ -765,6 +808,7 @@ router.post('/dictionary', requireAuth, async (req, res) => {
     return res.status(201).json({
       message: 'Word saved to dictionary',
       entry,
+      foundInGlobalDictionary: Boolean(dictionaryWord),
     })
   } catch (err) {
     console.error(err)
@@ -787,6 +831,7 @@ router.get('/dictionary', requireAuth, async (req, res) => {
         word: true,
         translationEn: true,
         translationRu: true,
+        transcription: true,
         description: true,
         createdAt: true,
         updatedAt: true,
@@ -821,15 +866,42 @@ router.patch('/dictionary/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'Dictionary entry not found' })
     }
 
-    const { word, translationEn, translationRu, description } = req.body || {}
+    const { word, translationEn, translationRu, transcription, description } =
+      req.body || {}
     const data = {}
 
     if (word !== undefined) {
-      const normalizedWord = String(word).trim()
-      if (!normalizedWord) {
+      const nextWord = String(word).trim()
+      if (!nextWord) {
         return res.status(400).json({ message: 'word cannot be empty' })
       }
-      data.word = normalizedWord
+
+      data.word = nextWord
+      data.normalizedWord = normalizeDictionaryWord(nextWord)
+
+      const dictionaryWord = await prisma.dictionaryWord.findUnique({
+        where: { normalizedWord: data.normalizedWord },
+        select: {
+          id: true,
+          translationEn: true,
+          translationRu: true,
+          transcription: true,
+        },
+      })
+
+      data.dictionaryWordId = dictionaryWord?.id ?? null
+
+      if (translationEn === undefined) {
+        data.translationEn = dictionaryWord?.translationEn ?? null
+      }
+
+      if (translationRu === undefined) {
+        data.translationRu = dictionaryWord?.translationRu ?? null
+      }
+
+      if (transcription === undefined) {
+        data.transcription = dictionaryWord?.transcription ?? null
+      }
     }
 
     if (translationEn !== undefined) {
@@ -840,6 +912,11 @@ router.patch('/dictionary/:id', requireAuth, async (req, res) => {
     if (translationRu !== undefined) {
       data.translationRu =
         translationRu === null ? null : String(translationRu).trim()
+    }
+
+    if (transcription !== undefined) {
+      data.transcription =
+        transcription === null ? null : String(transcription).trim()
     }
 
     if (description !== undefined) {
@@ -854,6 +931,7 @@ router.patch('/dictionary/:id', requireAuth, async (req, res) => {
         word: true,
         translationEn: true,
         translationRu: true,
+        transcription: true,
         description: true,
         createdAt: true,
         updatedAt: true,
