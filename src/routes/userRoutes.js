@@ -1335,6 +1335,60 @@ router.get('/:id/friend-status', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/user/:id/friend-profile
+router.get('/:id/friend-profile', requireAuth, async (req, res) => {
+  try {
+    const targetUserId = parseUserId(req.params.id)
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'Invalid user id' })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        username: true,
+        nickname: true,
+        level: true,
+        xp: true,
+        createdAt: true,
+      },
+    })
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    const friendsCount = await prisma.friendRequest.count({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ senderId: targetUserId }, { receiverId: targetUserId }],
+      },
+    })
+
+    const rankedUsers = await prisma.user.findMany({
+      select: {
+        id: true,
+        xp: true,
+      },
+      orderBy: [{ xp: 'desc' }, { id: 'asc' }],
+    })
+
+    const leaderboardRank =
+      rankedUsers.findIndex((row) => row.id === targetUserId) + 1 || null
+
+    return res.json({
+      user,
+      friendsCount,
+      leaderboardRank,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // DELETE /api/user/friends/:id
 router.delete('/friends/:id', requireAuth, async (req, res) => {
   try {
