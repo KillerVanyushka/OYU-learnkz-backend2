@@ -339,6 +339,7 @@ router.get('/me', requireAuth, async (req, res) => {
         streakCount: true,
         streakLastDay: true,
         xp: true,
+        silvEgg: true,
         createdAt: true,
       },
     })

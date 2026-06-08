@@ -11,6 +11,7 @@ model User {
   email                  String        @unique
   password               String
   xp                     Int           @default(0)
+  silvEgg                Int           @default(0)
   createdAt              DateTime      @default(now())
   role                   Role          @default(USER)
   level                  Level         @default(A0)
@@ -35,6 +36,7 @@ model User {
   lectureProgress        UserLectureProgress[]
   xpHistory              UserXpHistory[]
   onboardingAnswers      UserOnboardingAnswer?
+  circleRewardClaims     CircleRewardClaim[]
 }
 
 model DictionaryWord {
@@ -213,6 +215,19 @@ model UserXpHistory {
 
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+model CircleRewardClaim {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  level      Level
+  groupIndex Int
+  reward     Int      @default(5)
+  claimedAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level, groupIndex])
+  @@index([userId])
 }
 
 model UserLectureProgress {

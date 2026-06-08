@@ -128,6 +128,7 @@ exports.googleLogin = async (req, res) => {
         interfaceLanguage: user.interfaceLanguage,
         initialSetupCompleted: user.initialSetupCompleted,
         xp: user.xp,
+        silvEgg: user.silvEgg,
         createdAt: user.createdAt,
       },
     })

@@ -62,6 +62,7 @@ exports.register = async (req, res) => {
         interfaceLanguage: true,
         initialSetupCompleted: true,
         xp: true,
+        silvEgg: true,
         createdAt: true,
       },
     })
@@ -153,6 +154,7 @@ exports.login = async (req, res) => {
         interfaceLanguage: user.interfaceLanguage,
         initialSetupCompleted: user.initialSetupCompleted,
         xp: user.xp,
+        silvEgg: user.silvEgg,
         createdAt: user.createdAt,
       },
     })
