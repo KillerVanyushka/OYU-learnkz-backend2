@@ -1,7 +1,7 @@
 // service.js (для speaking)
 const fs = require("fs");
 const axios = require("axios");
-const FormData = require("form-data");
+const OpenAI = require("openai");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // ваш ключ
 const TRANSCRIPTION_MODELS = (
@@ -12,6 +12,11 @@ const TRANSCRIPTION_MODELS = (
     .map((value) => value.trim())
     .filter(Boolean);
 const EVALUATION_MODEL = "openai/gpt-4o-mini"; // для оценки текста
+
+const openai = new OpenAI({
+    apiKey: OPENROUTER_API_KEY,
+    baseURL: "https://openrouter.ai/api/v1",
+});
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -65,28 +70,15 @@ async function transcribeAudio(wavPath) {
     let lastError = null;
 
     for (const model of TRANSCRIPTION_MODELS) {
-        const formData = new FormData();
-        formData.append("model", model);
-        formData.append("file", fs.createReadStream(wavPath), {
-            filename: "speaking.wav",
-            contentType: "audio/wav",
-        });
-        formData.append("language", "kk");
-
         try {
-            const response = await axios.post(
-                "https://openrouter.ai/api/v1/audio/transcriptions",
-                formData,
-                {
-                    headers: {
-                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                        ...formData.getHeaders(),
-                    },
-                }
-            );
+            const response = await openai.audio.transcriptions.create({
+                file: fs.createReadStream(wavPath),
+                model,
+                language: "kk",
+            });
 
-            if (response.data?.text) {
-                return response.data.text;
+            if (response?.text) {
+                return response.text;
             }
 
             throw new Error(`Transcription response did not contain text for model ${model}`);
