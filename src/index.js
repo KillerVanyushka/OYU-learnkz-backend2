@@ -24,6 +24,7 @@ const booksRoutes = require('./routes/booksRoutes')
 const adminBookRoutes = require('./routes/adminBookRoutes')
 const audioBooksRoutes = require('./routes/audioBooksRoutes')
 const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
+const { startPendingUserCleanup } = require('./jobs/pendingUserCleanup')
 
 const alphabetGameRoutes=require('./routes/alphabetGame')
 const alphabetAudioRoutes = require('./routes/alphabetAudioRoutes')
@@ -77,6 +78,9 @@ app.use('/api/admin', adminAudioBookRoutes)
 
 const PORT = process.env.PORT || 5000
 
+startPendingUserCleanup()
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
 })
+

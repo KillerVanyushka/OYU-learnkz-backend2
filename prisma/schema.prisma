@@ -22,6 +22,7 @@ model User {
   streakLastDay          String?
   emailConfirmationToken String?
   emailConfirmed         Boolean       @default(false)
+  emailConfirmationExpiry DateTime?
   resetPasswordExpiry    DateTime?
   resetPasswordToken     String?
   nickname               String?       @unique
@@ -356,3 +357,4 @@ enum ChatRole {
   USER
   AI
 }
+
