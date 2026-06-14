@@ -38,6 +38,8 @@ model User {
   xpHistory              UserXpHistory[]
   onboardingAnswers      UserOnboardingAnswer?
   circleRewardClaims     CircleRewardClaim[]
+  bookReviews            BookReview[]
+  audioBookReviews       AudioBookReview[]
 }
 
 model DictionaryWord {
@@ -143,6 +145,7 @@ model Book {
   mimeType  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  reviews   BookReview[]
 
   @@index([title])
   @@index([author])
@@ -161,9 +164,40 @@ model AudioBook {
   mimeType  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  reviews   AudioBookReview[]
 
   @@index([title])
   @@index([author])
+}
+
+model BookReview {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  bookId    Int
+  rating    Int
+  comment   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId, createdAt])
+}
+
+model AudioBookReview {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  audioBookId Int
+  rating      Int
+  comment     String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audioBook   AudioBook @relation(fields: [audioBookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, audioBookId])
+  @@index([audioBookId, createdAt])
 }
 
 model UserDictionaryEntry {

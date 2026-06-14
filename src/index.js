@@ -24,6 +24,7 @@ const booksRoutes = require('./routes/booksRoutes')
 const adminBookRoutes = require('./routes/adminBookRoutes')
 const audioBooksRoutes = require('./routes/audioBooksRoutes')
 const adminAudioBookRoutes = require('./routes/adminAudioBookRoutes')
+const reviewRoutes = require('./routes/reviewRoutes')
 const { startPendingUserCleanup } = require('./jobs/pendingUserCleanup')
 
 const alphabetGameRoutes=require('./routes/alphabetGame')
@@ -75,6 +76,7 @@ app.use('/api/books', booksRoutes)
 app.use('/api/admin', adminBookRoutes)
 app.use('/api/audio-books', audioBooksRoutes)
 app.use('/api/admin', adminAudioBookRoutes)
+app.use('/api/reviews', reviewRoutes)
 
 const PORT = process.env.PORT || 5000
 
