@@ -4,7 +4,13 @@ const axios = require("axios");
 const FormData = require("form-data");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // ваш ключ
-const TRANSCRIPTION_MODEL = "openai/whisper-large-v3-turbo"; // или "openai/gpt-4o-transcribe"
+const TRANSCRIPTION_MODELS = (
+    process.env.OPENROUTER_TRANSCRIPTION_MODELS ||
+    "openai/gpt-4o-transcribe,openai/whisper-large-v3-turbo"
+)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 const EVALUATION_MODEL = "openai/gpt-4o-mini"; // для оценки текста
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -40,23 +46,58 @@ function calculateOverall(scores) {
     );
 }
 
-async function transcribeAudio(wavPath) {
-    const formData = new FormData();
-    formData.append("model", TRANSCRIPTION_MODEL);
-    formData.append("file", fs.createReadStream(wavPath));
-    formData.append("language", "kk"); // казахский, можно сделать параметром
+function describeAxiosError(error) {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
 
-    const response = await axios.post(
-        "https://openrouter.ai/api/v1/audio/transcriptions",
-        formData,
-        {
-            headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                ...formData.getHeaders(),
-            },
+    if (data) {
+        const details =
+            typeof data === "string"
+                ? data
+                : JSON.stringify(data);
+        return status ? `${status}: ${details}` : details;
+    }
+
+    return error?.message || "Unknown request error";
+}
+
+async function transcribeAudio(wavPath) {
+    let lastError = null;
+
+    for (const model of TRANSCRIPTION_MODELS) {
+        const formData = new FormData();
+        formData.append("model", model);
+        formData.append("file", fs.createReadStream(wavPath), {
+            filename: "speaking.wav",
+            contentType: "audio/wav",
+        });
+        formData.append("language", "kk");
+
+        try {
+            const response = await axios.post(
+                "https://openrouter.ai/api/v1/audio/transcriptions",
+                formData,
+                {
+                    headers: {
+                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                        ...formData.getHeaders(),
+                    },
+                }
+            );
+
+            if (response.data?.text) {
+                return response.data.text;
+            }
+
+            throw new Error(`Transcription response did not contain text for model ${model}`);
+        } catch (error) {
+            lastError = new Error(
+                `Transcription failed for model ${model}: ${describeAxiosError(error)}`
+            );
         }
-    );
-    return response.data.text;
+    }
+
+    throw lastError || new Error("Transcription failed");
 }
 
 async function evaluateText(transcript, topic, language) {
