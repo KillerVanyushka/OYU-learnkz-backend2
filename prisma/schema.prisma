@@ -38,6 +38,7 @@ model User {
   xpHistory              UserXpHistory[]
   onboardingAnswers      UserOnboardingAnswer?
   circleRewardClaims     CircleRewardClaim[]
+  levelRewardClaims      LevelRewardClaim[]
   bookReviews            BookReview[]
   audioBookReviews       AudioBookReview[]
 }
@@ -262,6 +263,18 @@ model CircleRewardClaim {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, level, groupIndex])
+  @@index([userId])
+}
+
+model LevelRewardClaim {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  level     Level
+  reward    Int      @default(10)
+  claimedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level])
   @@index([userId])
 }
 

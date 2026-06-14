@@ -12,6 +12,8 @@ const LEVEL_ORDER = {
   C2: 6,
 }
 
+const LEVEL_REWARD_AMOUNT = 10
+
 function buildLessonGroups(lessons) {
   const groupedByLevel = new Map()
 
@@ -427,6 +429,26 @@ router.get('/circle-rewards', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/progress/level-rewards
+router.get('/level-rewards', requireAuth, async (req, res) => {
+  try {
+    const claims = await prisma.levelRewardClaim.findMany({
+      where: { userId: req.userId },
+      select: {
+        level: true,
+        reward: true,
+        claimedAt: true,
+      },
+      orderBy: [{ level: 'asc' }],
+    })
+
+    return res.json(claims)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // POST /api/progress/circle-rewards/claim
 router.post('/circle-rewards/claim', requireAuth, async (req, res) => {
   try {
@@ -530,6 +552,98 @@ router.post('/circle-rewards/claim', requireAuth, async (req, res) => {
     return res.json({
       alreadyClaimed: false,
       earnedSilvEgg: reward,
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// POST /api/progress/level-rewards/claim
+router.post('/level-rewards/claim', requireAuth, async (req, res) => {
+  try {
+    const level = String(req.body?.level || '')
+      .trim()
+      .toUpperCase()
+
+    if (!(level in LEVEL_ORDER)) {
+      return res.status(400).json({ message: 'Invalid level' })
+    }
+
+    const existingClaim = await prisma.levelRewardClaim.findUnique({
+      where: {
+        userId_level: {
+          userId: req.userId,
+          level,
+        },
+      },
+      select: { id: true, reward: true, claimedAt: true },
+    })
+
+    if (existingClaim) {
+      return res.json({
+        alreadyClaimed: true,
+        earnedSilvEgg: 0,
+        reward: existingClaim.reward,
+        claimedAt: existingClaim.claimedAt,
+      })
+    }
+
+    const lessons = await prisma.lesson.findMany({
+      where: { isArchived: false, level },
+      select: { id: true },
+    })
+
+    if (lessons.length === 0) {
+      return res.status(404).json({ message: 'Level reward group not found' })
+    }
+
+    const progresses = await prisma.progress.findMany({
+      where: {
+        userId: req.userId,
+        lessonId: { in: lessons.map((lesson) => lesson.id) },
+      },
+      select: {
+        lessonId: true,
+        status: true,
+      },
+    })
+
+    const completedLessonIds = new Set(
+      progresses
+        .filter((item) => item.status === 'COMPLETED')
+        .map((item) => item.lessonId),
+    )
+
+    const allCompleted = lessons.every((lesson) =>
+      completedLessonIds.has(lesson.id),
+    )
+
+    if (!allCompleted) {
+      return res.status(400).json({
+        message: `Complete all lessons in ${level} first`,
+      })
+    }
+
+    await prisma.$transaction([
+      prisma.levelRewardClaim.create({
+        data: {
+          userId: req.userId,
+          level,
+          reward: LEVEL_REWARD_AMOUNT,
+        },
+      }),
+      prisma.user.update({
+        where: { id: req.userId },
+        data: {
+          silvEgg: { increment: LEVEL_REWARD_AMOUNT },
+        },
+      }),
+    ])
+
+    return res.json({
+      alreadyClaimed: false,
+      earnedSilvEgg: LEVEL_REWARD_AMOUNT,
     })
   } catch (err) {
     console.error(err)
