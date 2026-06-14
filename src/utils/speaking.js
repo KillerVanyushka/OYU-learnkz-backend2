@@ -4,13 +4,9 @@ const axios = require("axios");
 const OpenAI = require("openai");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // ваш ключ
-const TRANSCRIPTION_MODELS = (
-    process.env.OPENROUTER_TRANSCRIPTION_MODELS ||
-    "openai/gpt-4o-transcribe,openai/whisper-large-v3-turbo"
-)
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+const TRANSCRIPTION_MODEL =
+    process.env.OPENROUTER_SPEAKING_TRANSCRIBE_MODEL ||
+    "openai/gpt-audio-mini";
 const EVALUATION_MODEL = "openai/gpt-4o-mini"; // для оценки текста
 
 const openai = new OpenAI({
@@ -67,29 +63,61 @@ function describeAxiosError(error) {
 }
 
 async function transcribeAudio(wavPath) {
-    let lastError = null;
+    try {
+        const audioBuffer = fs.readFileSync(wavPath);
+        const base64Audio = audioBuffer.toString("base64");
 
-    for (const model of TRANSCRIPTION_MODELS) {
-        try {
-            const response = await openai.audio.transcriptions.create({
-                file: fs.createReadStream(wavPath),
-                model,
-                language: "kk",
-            });
+        const completion = await openai.chat.completions.create({
+            model: TRANSCRIPTION_MODEL,
+            temperature: 0,
+            messages: [
+                {
+                    role: "developer",
+                    content: [
+                        {
+                            type: "text",
+                            text:
+                                "Transcribe the user's spoken Kazakh audio. Return only the transcript as plain text. Do not translate. Do not add explanations or quotes.",
+                        },
+                    ],
+                },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Transcribe this audio in Kazakh." },
+                        {
+                            type: "input_audio",
+                            input_audio: { data: base64Audio, format: "wav" },
+                        },
+                    ],
+                },
+            ],
+        });
 
-            if (response?.text) {
-                return response.text;
-            }
+        const rawContent = completion?.choices?.[0]?.message?.content;
+        let transcript = "";
 
-            throw new Error(`Transcription response did not contain text for model ${model}`);
-        } catch (error) {
-            lastError = new Error(
-                `Transcription failed for model ${model}: ${describeAxiosError(error)}`
+        if (typeof rawContent === "string") {
+            transcript = rawContent.trim();
+        } else if (Array.isArray(rawContent)) {
+            transcript = rawContent
+                .map((item) => item?.text || "")
+                .join("\n")
+                .trim();
+        }
+
+        if (!transcript) {
+            throw new Error(
+                `Transcription response did not contain text for model ${TRANSCRIPTION_MODEL}`
             );
         }
-    }
 
-    throw lastError || new Error("Transcription failed");
+        return transcript;
+    } catch (error) {
+        throw new Error(
+            `Transcription failed for model ${TRANSCRIPTION_MODEL}: ${describeAxiosError(error)}`
+        );
+    }
 }
 
 async function evaluateText(transcript, topic, language) {
