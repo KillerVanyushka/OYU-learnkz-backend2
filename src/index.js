@@ -14,6 +14,7 @@ const uploadRoutes = require('./routes/uploadRoutes')
 
 const progressRoutes = require('./routes/progressRoutes')
 const chatRoutes = require('./routes/chatRoutes');
+const writingRoutes = require('./routes/writingRoutes');
 
 const taskPublicRoutes = require('./routes/taskPublicRoutes')
 const taskAudioRoutes = require('./routes/taskAudioRoutes')
@@ -61,6 +62,7 @@ app.use('/api/lessons', lessonRoutes)
 app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/progress', progressRoutes)
 app.use('/api/chat', chatRoutes);
+app.use('/api/writing', writingRoutes);
 
 
 app.use('/api/alphabet-game', alphabetGameRoutes)
@@ -85,4 +87,5 @@ startPendingUserCleanup()
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
 })
+
 
