@@ -3,11 +3,11 @@ const fs = require("fs");
 const axios = require("axios");
 const OpenAI = require("openai");
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // ваш ключ
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const TRANSCRIPTION_MODEL =
     process.env.OPENROUTER_SPEAKING_TRANSCRIBE_MODEL ||
     "openai/gpt-audio-mini";
-const EVALUATION_MODEL = "openai/gpt-4o-mini"; // для оценки текста
+const EVALUATION_MODEL = "openai/gpt-4o-mini";
 
 const openai = new OpenAI({
     apiKey: OPENROUTER_API_KEY,
@@ -232,9 +232,7 @@ async function evaluateSpeaking(wavPath, topic = "", language = "en") {
         throw new Error(`Audio file not found: ${wavPath}`);
     }
 
-    // 1. Распознаём речь
     const transcript = await transcribeAudio(wavPath);
-    // 2. Оцениваем текст
     const evaluation = await evaluateText(transcript, topic, language);
     return evaluation;
 }
