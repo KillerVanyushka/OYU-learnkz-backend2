@@ -1,14 +1,12 @@
 const fs = require("fs");
 const OpenAI = require("openai");
 
-// ⚠️ ВНИМАНИЕ: хранить ключ в коде небезопасно. Для реального проекта используйте переменные окружения.
 const CROSTHE = process.env.OPENROUTER_API_KEY;
 
 if (!CROSTHE) {
     throw new Error("API key is not set");
 }
 
-// Правильная инициализация для OpenRouter
 const openai = new OpenAI({
     apiKey: CROSTHE,
     baseURL: "https://openrouter.ai/api/v1",
